@@ -2,15 +2,15 @@ package main
 
 import (
 	"fmt"
-	"museum/cmd/proxy"
+	"museum/cmd/server"
 	"os"
 )
 
 func printUsage() {
 	fmt.Println("Usage: museum <command>")
 	fmt.Println("Commands:")
-	fmt.Println("\tproxy")
-	fmt.Println("\t- Starts the proxy server")
+	fmt.Println("\tserver")
+	fmt.Println("\t- Starts the mūsēum API and proxy server")
 	fmt.Println("\tcreate <file>")
 	fmt.Println("\t- Creates a new exhibit")
 	fmt.Println("\tdelete <name>")
@@ -30,8 +30,8 @@ func main() {
 	}
 
 	switch os.Args[1] {
-	case "proxy":
-		proxy.Run()
+	case "server":
+		server.Run()
 	default:
 		printUsage()
 	}

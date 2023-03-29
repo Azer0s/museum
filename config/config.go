@@ -9,4 +9,5 @@ type Config interface {
 	GetHostname() string
 	GetPort() string
 	GetJaegerHost() string
+	GetEnvironment() string
 }

@@ -12,6 +12,7 @@ require (
 	go.opentelemetry.io/otel v1.14.0
 	go.opentelemetry.io/otel/exporters/jaeger v1.14.0
 	go.opentelemetry.io/otel/sdk v1.14.0
+	go.opentelemetry.io/otel/trace v1.14.0
 )
 
 require (
@@ -27,6 +28,5 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421 // indirect
 	github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742 // indirect
 	github.com/pierrec/lz4/v4 v4.1.15 // indirect
-	go.opentelemetry.io/otel/trace v1.14.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 )

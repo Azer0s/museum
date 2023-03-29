@@ -89,7 +89,7 @@ func getCreatorParams(reflectedCreator reflect.Value) []reflect.Type {
 	return creatorParams
 }
 
-func generateFromCreator(c *Container, tt reflect.Type, reflectedCreator reflect.Value) (interface{}, []reflect.Type) {
+func generateFromCreator(c *Container, reflectedCreator reflect.Value) (interface{}, []reflect.Type) {
 	// get list of parameters from creator
 	creatorParams := getCreatorParams(reflectedCreator)
 
@@ -124,7 +124,7 @@ func RegisterSingleton[T any](c *Container, creator interface{}) {
 
 	reflectedCreator := reflect.ValueOf(creator)
 	checkCreatorFunc(tt, reflectedCreator)
-	impl, creatorParams := generateFromCreator(c, tt, reflectedCreator)
+	impl, creatorParams := generateFromCreator(c, reflectedCreator)
 
 	c.implMap[tt.String()] = implementationDetails{
 		value:        impl,
@@ -175,7 +175,7 @@ func getFromType(c *Container, tt reflect.Type) interface{} {
 		return impl.value
 	}
 
-	actual, _ := generateFromCreator(c, tt, reflect.ValueOf(impl.value))
+	actual, _ := generateFromCreator(c, reflect.ValueOf(impl.value))
 	return actual
 }
 
@@ -188,7 +188,7 @@ func Get[T any](c *Container) T {
 }
 
 func ForStruct[T any](c *Container) *T {
-	var t *T = new(T)
+	var t = new(T)
 	tt := reflect.TypeOf(t)
 	tt = tt.Elem()
 
@@ -229,6 +229,40 @@ func ForStruct[T any](c *Container) *T {
 	}
 
 	return t
+}
+
+func ForFunc(c *Container, fn interface{}) {
+	c.implMapMu.RLock()
+	defer c.implMapMu.RUnlock()
+
+	// check that fn is a function
+	if reflect.TypeOf(fn).Kind() != reflect.Func {
+		panic("fn must be a function")
+	}
+
+	// check that the function does not return anything
+	if reflect.TypeOf(fn).NumOut() != 0 {
+		panic("fn must not return anything")
+	}
+
+	reflectedFn := reflect.ValueOf(fn)
+	fnParams := make([]reflect.Type, reflectedFn.Type().NumIn())
+	for i := 0; i < reflectedFn.Type().NumIn(); i++ {
+		fnParams[i] = reflectedFn.Type().In(i)
+	}
+
+	arguments := make([]reflect.Value, len(fnParams))
+	for i, param := range fnParams {
+		// check that parameter is registered
+		if impl, ok := c.implMap[param.String()]; ok {
+			arguments[i] = reflect.ValueOf(impl.value)
+		} else {
+			panic("parameter " + param.String() + " is not registered")
+		}
+	}
+
+	// call fn with registered parameters
+	reflectedFn.Call(arguments)
 }
 
 func GenerateDependencyGraph(c *Container) string {

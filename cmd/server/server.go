@@ -1,11 +1,11 @@
-package proxy
+package server
 
 import (
 	"fmt"
 	goredislib "github.com/redis/go-redis/v9"
 	"github.com/segmentio/kafka-go"
-	"go.opentelemetry.io/otel/sdk/trace"
-	tracesdk "go.opentelemetry.io/otel/trace"
+	tracesdk "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 	"museum/config"
 	"museum/ioc"
 	"museum/observability"
@@ -19,8 +19,8 @@ func Run() {
 	ioc.RegisterSingleton[config.Config](c, config.NewEnvConfig)
 
 	// register jaeger
-	ioc.RegisterSingleton[trace.SpanExporter](c, observability.NewSpanExporter)
-	ioc.RegisterSingleton[tracesdk.TracerProvider](c, observability.NewTracerProvider)
+	ioc.RegisterSingleton[tracesdk.SpanExporter](c, observability.NewSpanExporter)
+	ioc.RegisterSingleton[trace.TracerProvider](c, observability.NewTracerProvider)
 
 	// register redis
 	ioc.RegisterSingleton[*goredislib.Client](c, persistence.NewRedisClient)

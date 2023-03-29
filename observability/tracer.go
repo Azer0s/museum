@@ -1,15 +1,21 @@
 package observability
 
 import (
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
 	"museum/config"
 )
 
 func NewSpanExporter(config config.Config) tracesdk.SpanExporter {
+	if config.GetJaegerHost() == "" {
+		return &tracetest.NoopExporter{}
+	}
+
 	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint("http://" + config.GetJaegerHost() + "/api/traces")))
 	if err != nil {
 		panic(err)
@@ -25,6 +31,7 @@ func NewTracerProvider(exporter tracesdk.SpanExporter, config config.Config) tra
 		tracesdk.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
 			semconv.ServiceName("museum"),
+			attribute.String("environment", config.GetEnvironment()),
 		)),
 	)
 }

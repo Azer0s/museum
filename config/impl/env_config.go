@@ -9,6 +9,7 @@ type EnvConfig struct {
 	Hostname     string   `env:"HOSTNAME" envDefault:"localhost"`
 	Port         string   `env:"PORT" envDefault:"8080"`
 	JaegerHost   string   `env:"JAEGER_HOST,required"`
+	Environment  string   `env:"ENVIRONMENT" envDefault:"development"`
 }
 
 func (e EnvConfig) GetKafkaBrokers() []string {
@@ -41,4 +42,8 @@ func (e EnvConfig) GetPort() string {
 
 func (e EnvConfig) GetJaegerHost() string {
 	return e.JaegerHost
+}
+
+func (e EnvConfig) GetEnvironment() string {
+	return e.Environment
 }

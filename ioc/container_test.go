@@ -389,3 +389,59 @@ func TestForStructIsActuallyAStruct(t *testing.T) {
 
 	ForStruct[int](c)
 }
+
+func TestForFuncIsActuallyAFunction(t *testing.T) {
+	c := NewContainer()
+
+	// this should panic
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic")
+		}
+	}()
+
+	ForFunc(c, 1)
+}
+
+func TestForFuncFunctionDoesNotReturnAnything(t *testing.T) {
+	c := NewContainer()
+
+	// this should panic
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic")
+		}
+	}()
+
+	ForFunc(c, func() uint8 { return 1 })
+}
+
+func TestForFunc(t *testing.T) {
+	c := NewContainer()
+
+	RegisterSingleton[*Foo](c, NewFoo)
+	RegisterSingleton[*Bar](c, NewBar)
+
+	ForFunc(c, func(foo *Foo, bar *Bar) {
+		if foo == nil {
+			t.Errorf("foo is nil")
+		}
+
+		if bar == nil {
+			t.Errorf("bar is nil")
+		}
+	})
+}
+
+func TestForFuncHasUnregisteredParameter(t *testing.T) {
+	c := NewContainer()
+
+	// this should panic
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic")
+		}
+	}()
+
+	ForFunc(c, func(foo *Foo) {})
+}

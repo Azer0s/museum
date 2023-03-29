@@ -13,12 +13,14 @@ Every application has to take out a "lease" on the application name. This lease 
 mūsēum is available as a Docker image. You can find the image on Docker Hub. To run mūsēum, you need to provide the following environment variables:
 
 * `KAFKA_BROKERS`: A comma-separated list of Kafka brokers
-* `KAFKA_TOPIC`: The Kafka topic to use
+* `KAFKA_TOPIC`: The Kafka topic to use (optional, defaults to `museum`)
 * `REDIS_HOST`: The address of the Redis instance
-* `REDIS_BASE_KEY`: The base key to use for Redis
-* `DOCKER_HOST`: The address of the Docker Swarm
-* `HOSTNAME`: The hostname of the mūsēum instance
-* `PORT`: The port to listen on
+* `REDIS_BASE_KEY`: The base key to use for Redis (optional, defaults to `museum`)
+* `DOCKER_HOST`: The address of the Docker Swarm (optional, defaults to `unix:///var/run/docker.sock`)
+* `HOSTNAME`: The hostname of the mūsēum instance (optional, defaults to `localhost`)
+* `PORT`: The port to listen on (optional, defaults to `8080`)
+* `JAEGER_HOST`: The address of the Jaeger instance (optional)
+* `ENVIRONMENT`: The environment mūsēum is running in (optional)
 
 The proxy comes with a command line utility to manage applications. You can use it to start, stop and remove applications. You can also use it to list all running applications.
 
