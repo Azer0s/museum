@@ -80,37 +80,312 @@ func NewBurr(buzz Buzzable, bazz *Bazz) Burrable {
 	}
 }
 
-func Cleanup() {
-	implMapMu.Lock()
-	defer implMapMu.Unlock()
-	implMap = make(map[string]implementationDetails)
-}
+func TestRegisterSingleton(t *testing.T) {
+	c := NewContainer()
 
-func TestRegisterImpl(t *testing.T) {
-	RegisterImpl[*Foo](NewFoo)
-	RegisterImpl[*Bar](NewBar)
-	RegisterImpl[Bazzable](NewBazz)
-	RegisterImpl[Buzzable](NewBuzz)
-	RegisterImpl[Burrable](NewBurr)
+	RegisterSingleton[*Foo](c, NewFoo)
+	RegisterSingleton[*Bar](c, NewBar)
+	RegisterSingleton[Bazzable](c, NewBazz)
+	RegisterSingleton[Buzzable](c, NewBuzz)
+	RegisterSingleton[Burrable](c, NewBurr)
 
-	buzz := GetImpl[Buzzable]()
+	buzz := Get[Buzzable](c)
 	buzz.DoBuzz()
 
-	burr := GetImpl[Burrable]()
+	burr := Get[Burrable](c)
 	burr.DoBurr()
-
-	Cleanup()
 }
 
 func TestGenerateDependencyGraph(t *testing.T) {
-	RegisterImpl[*Foo](NewFoo)
-	RegisterImpl[*Bar](NewBar)
-	RegisterImpl[Bazzable](NewBazz)
-	RegisterImpl[Buzzable](NewBuzz)
-	RegisterImpl[Burrable](NewBurr)
+	c := NewContainer()
 
-	depGraph := GenerateDependencyGraph()
+	RegisterSingleton[*Foo](c, NewFoo)
+	RegisterSingleton[*Bar](c, NewBar)
+	RegisterSingleton[Bazzable](c, NewBazz)
+	RegisterSingleton[Buzzable](c, NewBuzz)
+	RegisterSingleton[Burrable](c, NewBurr)
+
+	depGraph := GenerateDependencyGraph(c)
 	fmt.Println(depGraph)
+}
 
-	Cleanup()
+type Barkable interface {
+	DoBark()
+}
+
+type Dog struct {
+}
+
+func (d Dog) DoBark() {
+	fmt.Println("woof")
+}
+
+var counter = 0
+
+func NewDog() Barkable {
+	counter++
+	return &Dog{}
+}
+
+func TestRegisterGenerator(t *testing.T) {
+	c := NewContainer()
+
+	RegisterGenerator[Barkable](c, NewDog)
+
+	dog1 := Get[Barkable](c)
+	dog1.DoBark()
+
+	dog2 := Get[Barkable](c)
+	dog2.DoBark()
+
+	if counter != 2 {
+		t.Errorf("expected 2 dogs, got %d", counter)
+	}
+}
+
+type ToFill struct {
+	Foo      *Foo
+	Bar      *Bar
+	Bazzable Bazzable
+	Burrable Burrable `inject:"ignore"`
+}
+
+func (t ToFill) String() string {
+	return fmt.Sprintf("%v %v %v %v", t.Foo, t.Bar, t.Bazzable, t.Burrable)
+}
+
+func TestForStruct(t *testing.T) {
+	c := NewContainer()
+
+	RegisterSingleton[*Foo](c, NewFoo)
+	RegisterSingleton[*Bar](c, NewBar)
+	RegisterSingleton[Bazzable](c, NewBazz)
+	RegisterSingleton[Buzzable](c, NewBuzz)
+	RegisterSingleton[Burrable](c, NewBurr)
+
+	toFill := ForStruct[ToFill](c)
+	fmt.Println(toFill.String())
+
+	// check that the ignored field is nil
+	if toFill.Burrable != nil {
+		t.Errorf("expected nil, got %v", toFill.Burrable)
+	}
+
+	// check that the other fields are not nil
+	if toFill.Foo == nil {
+		t.Errorf("expected non-nil, got %v", toFill.Foo)
+	}
+
+	if toFill.Bar == nil {
+		t.Errorf("expected non-nil, got %v", toFill.Bar)
+	}
+
+	if toFill.Bazzable == nil {
+		t.Errorf("expected non-nil, got %v", toFill.Bazzable)
+	}
+}
+
+func TestCreatorIsFunction(t *testing.T) {
+	c := NewContainer()
+
+	// this should panic
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic")
+		}
+	}()
+
+	RegisterSingleton[*Foo](c, 1)
+}
+
+func TestCreatorReturnsSingleValue(t *testing.T) {
+	c := NewContainer()
+
+	// this should panic
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic")
+		}
+	}()
+
+	RegisterSingleton[*Foo](c, func() (*Foo, *Foo) {
+		return &Foo{}, &Foo{}
+	})
+}
+
+func TestCreatorReturnsPointer(t *testing.T) {
+	c := NewContainer()
+
+	// this should panic
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic")
+		}
+	}()
+
+	RegisterSingleton[*Foo](c, func() Foo {
+		return Foo{}
+	})
+}
+
+func TestCreatorReturnsStructThatImplementsInterface(t *testing.T) {
+	c := NewContainer()
+
+	// this should panic
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("unexpected panic")
+		}
+	}()
+
+	RegisterSingleton[Bazzable](c, func() *Bazz {
+		return &Bazz{}
+	})
+}
+
+func TestCreatorReturnsStructThatDoesNotImplementInterface(t *testing.T) {
+	c := NewContainer()
+
+	// this should panic
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic")
+		}
+	}()
+
+	RegisterSingleton[Bazzable](c, func() *Foo {
+		return &Foo{}
+	})
+}
+
+func TestCreatorReturnsNil(t *testing.T) {
+	c := NewContainer()
+
+	// this should panic
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic")
+		}
+	}()
+
+	RegisterSingleton[Bazzable](c, func() Bazzable {
+		return nil
+	})
+}
+
+func TestTypeParameterIsEitherPointerOrInterface(t *testing.T) {
+	c := NewContainer()
+
+	// this should panic
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic")
+		}
+	}()
+
+	RegisterSingleton[Bar](c, NewBar)
+}
+
+func TestCreatorDoesNotReturnPointerToInterface(t *testing.T) {
+	c := NewContainer()
+
+	// this should panic
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic")
+		}
+	}()
+
+	RegisterSingleton[Bazzable](c, func() *Bazzable {
+		return nil
+	})
+}
+
+func TestCreatorReturnsPointerToStruct(t *testing.T) {
+	c := NewContainer()
+
+	// this should panic
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic")
+		}
+	}()
+
+	RegisterSingleton[*Foo](c, func() Foo {
+		return Foo{}
+	})
+}
+
+func TestGetForGeneratorDoesNotReturnNil(t *testing.T) {
+	c := NewContainer()
+
+	RegisterGenerator[Barkable](c, func() *Dog {
+		return nil
+	})
+
+	// this should panic
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic")
+		}
+	}()
+
+	Get[Barkable](c)
+}
+
+func TestTypeIsRegistered(t *testing.T) {
+	c := NewContainer()
+
+	// this should panic
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic")
+		}
+	}()
+
+	Get[Barkable](c)
+}
+
+func TestTypeForCreatorParameterIsRegistered(t *testing.T) {
+	c := NewContainer()
+
+	// this should panic
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic")
+		}
+	}()
+
+	RegisterSingleton[Barkable](c, func(baz *Bazz) *Dog {
+		return &Dog{}
+	})
+}
+
+func TestInjectFieldIsNotRegistered(t *testing.T) {
+	c := NewContainer()
+
+	// this should panic
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic")
+		}
+	}()
+
+	RegisterSingleton[*Foo](c, NewFoo)
+	RegisterSingleton[*Bar](c, NewBar)
+
+	ForStruct[ToFill](c)
+}
+
+func TestForStructIsActuallyAStruct(t *testing.T) {
+	c := NewContainer()
+
+	// this should panic
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic")
+		}
+	}()
+
+	ForStruct[int](c)
 }

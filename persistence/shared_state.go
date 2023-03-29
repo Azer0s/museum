@@ -9,3 +9,10 @@ type SharedPersistentState interface {
 	DeleteApplication(app domain.Application) error
 	AddApplication(app domain.Application) error
 }
+
+type SharedPersistentEmittedState interface {
+	GetApplications() ([]domain.Application, error)
+	AddApplication(app domain.Application) error
+	RenewApplicationLease(app domain.Application) error
+	ExpireApplicationLease(app domain.Application) error
+}

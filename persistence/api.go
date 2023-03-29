@@ -23,3 +23,18 @@ func NewRedisStateConnector(redisClient *goredislib.Client) SharedPersistentStat
 
 	return rs
 }
+
+func NewKafkaConsumer(consumerGroup *kafka.ConsumerGroup) Consumer {
+	return &impl.KafkaConsumer{
+		ConsumerGroup: consumerGroup,
+		Brokers:       []string{"localhost:9092"},
+	}
+}
+
+func NewSharedPersistentEmittedState(state SharedPersistentState, emitter Emitter, consumer Consumer) SharedPersistentEmittedState {
+	return &StateBundle{
+		SharedPersistentState: state,
+		Emitter:               emitter,
+		Consumer:              consumer,
+	}
+}
