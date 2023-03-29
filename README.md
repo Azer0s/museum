@@ -14,11 +14,11 @@ mūsēum is available as a Docker image. You can find the image on Docker Hub. T
 
 * `KAFKA_BROKERS`: A comma-separated list of Kafka brokers
 * `KAFKA_TOPIC`: The Kafka topic to use
-* `REDIS_HOST`: The hostname of the Redis instance
-* `REDIS_PORT`: The port of the Redis instance
-* `DOCKER_HOST`: The hostname of the Docker Swarm
-* `DOCKER_PORT`: The port of the Docker Swarm
+* `REDIS_HOST`: The address of the Redis instance
+* `REDIS_BASE_KEY`: The base key to use for Redis
+* `DOCKER_HOST`: The address of the Docker Swarm
 * `HOSTNAME`: The hostname of the mūsēum instance
+* `PORT`: The port to listen on
 
 The proxy comes with a command line utility to manage applications. You can use it to start, stop and remove applications. You can also use it to list all running applications.
 

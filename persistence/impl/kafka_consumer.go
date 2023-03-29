@@ -5,11 +5,13 @@ import (
 	"errors"
 	cloudevents "github.com/cloudevents/sdk-go/v2/event"
 	"github.com/segmentio/kafka-go"
+	"museum/config"
 )
 
 type KafkaConsumer struct {
 	ConsumerGroup *kafka.ConsumerGroup
 	Brokers       []string
+	Config        config.Config
 }
 
 type generationStartInfo struct {
@@ -19,13 +21,13 @@ type generationStartInfo struct {
 	eventChan chan<- cloudevents.Event
 }
 
-func readAllMessages(reader *kafka.Reader, startInfo *generationStartInfo) {
+func readAllMessages(config config.Config, reader *kafka.Reader, startInfo *generationStartInfo) {
 	partition, offset, gen := startInfo.partition, startInfo.offset, startInfo.gen
 	for {
 		msg, err := reader.ReadMessage(context.Background())
 		if err != nil {
 			if errors.Is(err, kafka.ErrGenerationEnded) {
-				err := gen.CommitOffsets(map[string]map[int]int64{KafkaTopic: {partition: offset + 1}})
+				err := gen.CommitOffsets(map[string]map[int]int64{config.GetKafkaTopic(): {partition: offset + 1}})
 				if err != nil {
 					return
 				}
@@ -55,7 +57,7 @@ func (k KafkaConsumer) handleGenerationStart(startInfo *generationStartInfo) fun
 		// create reader for this partition.
 		reader := kafka.NewReader(kafka.ReaderConfig{
 			Brokers:   k.Brokers,
-			Topic:     KafkaTopic,
+			Topic:     k.Config.GetKafkaTopic(),
 			Partition: partition,
 		})
 		defer func(reader *kafka.Reader) {
@@ -71,7 +73,7 @@ func (k KafkaConsumer) handleGenerationStart(startInfo *generationStartInfo) fun
 			return
 		}
 
-		readAllMessages(reader, startInfo)
+		readAllMessages(k.Config, reader, startInfo)
 	}
 }
 
@@ -87,7 +89,7 @@ func (k KafkaConsumer) GetEvents() (<-chan cloudevents.Event, error) {
 				panic(err)
 			}
 
-			assignments := gen.Assignments[KafkaTopic]
+			assignments := gen.Assignments[k.Config.GetKafkaTopic()]
 			for _, assignment := range assignments {
 				gen.Start(k.handleGenerationStart(&generationStartInfo{
 					partition: assignment.ID,

@@ -1,35 +1,33 @@
-package main
+package proxy
 
 import (
 	"fmt"
 	goredislib "github.com/redis/go-redis/v9"
 	"github.com/segmentio/kafka-go"
+	"go.opentelemetry.io/otel/sdk/trace"
+	tracesdk "go.opentelemetry.io/otel/trace"
+	"museum/config"
 	"museum/ioc"
+	"museum/observability"
 	"museum/persistence"
 )
 
-func main() {
+func Run() {
 	c := ioc.NewContainer()
 
-	// register redis
-	var redisClientDeferFunc func()
-	ioc.RegisterSingleton[*goredislib.Client](c, func() *goredislib.Client {
-		client, deferFunc := persistence.NewRedisClient()
-		redisClientDeferFunc = deferFunc
-		return client
-	})
-	defer redisClientDeferFunc()
+	// register config
+	ioc.RegisterSingleton[config.Config](c, config.NewEnvConfig)
 
+	// register jaeger
+	ioc.RegisterSingleton[trace.SpanExporter](c, observability.NewSpanExporter)
+	ioc.RegisterSingleton[tracesdk.TracerProvider](c, observability.NewTracerProvider)
+
+	// register redis
+	ioc.RegisterSingleton[*goredislib.Client](c, persistence.NewRedisClient)
 	ioc.RegisterSingleton[persistence.SharedPersistentState](c, persistence.NewRedisStateConnector)
 
 	// register kafka consumer group
-	ioc.RegisterSingleton[*kafka.ConsumerGroup](c, func() *kafka.ConsumerGroup {
-		consumerGroup, err := persistence.NewKafkaConsumerGroup()
-		if err != nil {
-			panic(err)
-		}
-		return consumerGroup
-	})
+	ioc.RegisterSingleton[*kafka.ConsumerGroup](c, persistence.NewKafkaConsumerGroup)
 	ioc.RegisterSingleton[persistence.Consumer](c, persistence.NewKafkaConsumer)
 
 	// register kafka producer

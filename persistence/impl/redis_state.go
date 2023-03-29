@@ -7,6 +7,7 @@ import (
 	"github.com/go-redsync/redsync/v4"
 	"github.com/go-redsync/redsync/v4/redis"
 	goredislib "github.com/redis/go-redis/v9"
+	"museum/config"
 	"museum/domain"
 )
 
@@ -15,6 +16,7 @@ type RedisStateConnector struct {
 	RedisPool   redis.Pool
 	RedisSync   *redsync.Redsync
 	RedisMu     *redsync.Mutex
+	Config      config.Config
 }
 
 func (rs *RedisStateConnector) withLock(f func()) (err error) {
@@ -36,7 +38,7 @@ func (rs *RedisStateConnector) withLock(f func()) (err error) {
 
 func (rs *RedisStateConnector) GetApplications() (state []domain.Application, err error) {
 	lockErr := rs.withLock(func() {
-		iter := rs.RedisClient.Scan(context.Background(), 0, "museum:state:app:*", 0).Iterator()
+		iter := rs.RedisClient.Scan(context.Background(), 0, rs.Config.GetRedisBaseKey()+":state:app:*", 0).Iterator()
 
 		for iter.Next(context.Background()) {
 			app := domain.Application{}

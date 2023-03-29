@@ -5,39 +5,39 @@ import (
 	"github.com/google/uuid"
 	goredislib "github.com/redis/go-redis/v9"
 	"github.com/segmentio/kafka-go"
-	"museum/persistence/impl"
+	"museum/config"
 )
 
-func NewRedisClient() (*goredislib.Client, func()) {
+func NewRedisClient(config config.Config) *goredislib.Client {
 	redisClient := goredislib.NewClient(&goredislib.Options{
-		Addr: "localhost:6379",
+		Addr: config.GetRedisHost(),
 	})
 
 	if _, err := redisClient.Ping(context.Background()).Result(); err != nil {
 		panic(err)
-		return nil, nil
+		return nil
 	}
 
-	return redisClient, func() {
-		err := redisClient.Close()
-		if err != nil {
-			panic(err)
-		}
-	}
+	return redisClient
 }
 
-func NewKafkaWriter() *kafka.Writer {
+func NewKafkaWriter(config config.Config) *kafka.Writer {
 	return &kafka.Writer{
-		Addr:  kafka.TCP("localhost:9092"),
-		Topic: impl.KafkaTopic,
+		Addr:  kafka.TCP(config.GetKafkaBrokers()[0]),
+		Topic: config.GetKafkaTopic(),
 	}
 }
 
-func NewKafkaConsumerGroup() (*kafka.ConsumerGroup, error) {
-	return kafka.NewConsumerGroup(kafka.ConsumerGroupConfig{
+func NewKafkaConsumerGroup(config config.Config) *kafka.ConsumerGroup {
+	group, err := kafka.NewConsumerGroup(kafka.ConsumerGroupConfig{
 		ID:      uuid.New().String(),
-		Brokers: []string{"localhost:9092"},
-		Dialer:  nil,
-		Topics:  []string{impl.KafkaTopic},
+		Brokers: config.GetKafkaBrokers(),
+		Topics:  []string{config.GetKafkaTopic()},
 	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	return group
 }
