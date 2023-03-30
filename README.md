@@ -28,7 +28,7 @@ Applications are configured with so-called "exhibit" files. These files are simp
 
 ```yaml
 name: my-research-project
-exhibits:
+spots:
   - name: my-database
     image: postgres:9.6
     environment:
@@ -62,7 +62,7 @@ order:
   - my-webapp
 ```
 
-You would then start the application with `museum create my-exhibit.yml`. This will start the application and make it available at a random path (a UUID) on the proxy. You can then access the application at `http://<proxy-host>:<proxy-port>/<path>`. You can also specify a path for the application with the `--path` flag (this is not recommended as we want to avoid path collisions).
+You would then start the application with `museum create my-exhibit.yml`. This will start the application and make it available at a random path (a UUID) on the proxy. You can then access the application at `http://<proxy-host>:<proxy-port>/exhibits/<path>`. You can also specify a path for the application with the `--path` flag (this is not recommended as we want to avoid path collisions).
 
 ## Accessing the applications
 
@@ -71,14 +71,14 @@ To access the applications, you need to know the path of the application. You ca
 ```bash
 $ museum list
 > my-research-project
-    🚗 Path: http://localhost:8080/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
+    🚗 Path: http://localhost:8080/exhibits/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
     ⏲ Expires: 23 minutes and 59 seconds from now
     🔒 HTTPS: false 🔴
     📦 exhibits:
         📦 my-database (postgres:9.6)
         📦 my-webapp (my-research-project:latest)
 > my-other-project
-    🚗 Path: http://localhost:8080/3b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
+    🚗 Path: http://localhost:8080/exhibits/3b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
     ⏲ Expires: 1 hour, 11 minutes and 16 seconds from now
     🔒 HTTPS: true 🟢
     📦 exhibits:
