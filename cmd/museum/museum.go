@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"museum/cmd/server"
+	"museum/cmd/tool"
 	"os"
 )
 
@@ -32,7 +33,20 @@ func main() {
 	switch os.Args[1] {
 	case "server":
 		server.Run()
-	default:
-		printUsage()
+	case "create":
+		if tool.Create() != nil {
+			printUsage()
+			os.Exit(1)
+		}
+	case "delete":
+		if tool.Delete() != nil {
+			printUsage()
+			os.Exit(1)
+		}
+	case "list":
+		if tool.List() != nil {
+			printUsage()
+			os.Exit(1)
+		}
 	}
 }

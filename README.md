@@ -28,7 +28,7 @@ Applications are configured with so-called "exhibit" files. These files are simp
 
 ```yaml
 name: my-research-project
-spots:
+objects:
   - name: my-database
     image: postgres:9.6
     environment:

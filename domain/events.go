@@ -3,21 +3,21 @@ package domain
 import cloudevents "github.com/cloudevents/sdk-go/v2/event"
 
 const (
-	CreateEventType       = "museum.application.create"
-	DeleteEventType       = "museum.application.delete"
-	LeaseRenewedEventType = "museum.application.lease.renewed"
-	LeaseExpiredEventType = "museum.application.lease.expired"
+	CreateEventType       = "museum.exhibit.create"
+	DeleteEventType       = "museum.exhibit.delete"
+	LeaseRenewedEventType = "museum.exhibit.lease.renewed"
+	LeaseExpiredEventType = "museum.exhibit.lease.expired"
 
 	source      = "museum"
-	contentType = "application/json"
+	contentType = "exhibit/json"
 )
 
-func newEvent(eventType string, application Application) (cloudevents.Event, error) {
+func newEvent(eventType string, exhibit Exhibit) (cloudevents.Event, error) {
 	event := cloudevents.New()
 
 	event.SetType(eventType)
 	event.SetSource(source)
-	err := event.SetData(contentType, application)
+	err := event.SetData(contentType, exhibit)
 	if err != nil {
 		return cloudevents.Event{}, err
 	}
@@ -25,18 +25,18 @@ func newEvent(eventType string, application Application) (cloudevents.Event, err
 	return event, nil
 }
 
-func NewCreateEvent(application Application) (cloudevents.Event, error) {
-	return newEvent(CreateEventType, application)
+func NewCreateEvent(exhibit Exhibit) (cloudevents.Event, error) {
+	return newEvent(CreateEventType, exhibit)
 }
 
-func NewDeleteEvent(application Application) (cloudevents.Event, error) {
-	return newEvent(DeleteEventType, application)
+func NewDeleteEvent(exhibit Exhibit) (cloudevents.Event, error) {
+	return newEvent(DeleteEventType, exhibit)
 }
 
-func NewLeaseRenewedEvent(application Application) (cloudevents.Event, error) {
-	return newEvent(LeaseRenewedEventType, application)
+func NewLeaseRenewedEvent(exhibit Exhibit) (cloudevents.Event, error) {
+	return newEvent(LeaseRenewedEventType, exhibit)
 }
 
-func NewLeaseExpiredEvent(application Application) (cloudevents.Event, error) {
-	return newEvent(LeaseExpiredEventType, application)
+func NewLeaseExpiredEvent(exhibit Exhibit) (cloudevents.Event, error) {
+	return newEvent(LeaseExpiredEventType, exhibit)
 }

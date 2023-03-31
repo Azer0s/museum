@@ -5,14 +5,15 @@ import (
 )
 
 type SharedPersistentState interface {
-	GetApplications() ([]domain.Application, error)
-	DeleteApplication(app domain.Application) error
-	AddApplication(app domain.Application) error
+	WithLock(f func() error) (err error)
+	GetExhibits() ([]domain.Exhibit, error)
+	DeleteExhibit(app domain.Exhibit) error
+	AddExhibit(app domain.Exhibit) error
 }
 
 type SharedPersistentEmittedState interface {
-	GetApplications() ([]domain.Application, error)
-	AddApplication(app domain.Application) error
-	RenewApplicationLease(app domain.Application) error
-	ExpireApplicationLease(app domain.Application) error
+	GetExhibits() []domain.Exhibit
+	AddExhibit(app domain.Exhibit) error
+	RenewExhibitLease(app domain.Exhibit) error
+	ExpireExhibitLease(app domain.Exhibit) error
 }

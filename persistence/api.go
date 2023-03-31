@@ -7,6 +7,7 @@ import (
 	"github.com/segmentio/kafka-go"
 	"museum/config"
 	"museum/persistence/impl"
+	"sync"
 	"time"
 )
 
@@ -33,9 +34,29 @@ func NewKafkaConsumer(config config.Config, consumerGroup *kafka.ConsumerGroup) 
 }
 
 func NewSharedPersistentEmittedState(state SharedPersistentState, emitter Emitter, consumer Consumer) SharedPersistentEmittedState {
-	return &StateBundle{
+	sb := &StateBundle{
 		SharedPersistentState: state,
 		Emitter:               emitter,
 		Consumer:              consumer,
 	}
+
+	err := state.WithLock(func() error {
+		// TODO: start go routine to listen for kafka messages
+
+		currentState, err := state.GetExhibits()
+		if err != nil {
+			return err
+		}
+
+		sb.CurrentState = currentState
+		sb.CurrentStateMutex = &sync.RWMutex{}
+
+		return nil
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	return sb
 }

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        .loader {
+            border: 16px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 16px solid #3498db;
+            height: 25vh;
+            aspect-ratio: 1 / 1;
+            -webkit-animation: spin 2s linear infinite;
+            /* Safari */
+            animation: spin 2s linear infinite;
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+        }
+
+        h2 {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: xx-large;
+            text-align: center;
+        }
+
+        h3 {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: x-large;
+            text-align: center;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: auto auto auto;
+
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .inner-container {
+            display: grid;
+            grid-template-rows: auto auto auto;
+        }
+
+        .loader-container {
+            display: grid;
+            grid-template-rows: 30% 70%;
+            align-items: center;
+            justify-items: center;
+        }
+
+        /* Safari */
+        @-webkit-keyframes spin {
+            0% {
+                -webkit-transform: rotate(0deg);
+            }
+
+            100% {
+                -webkit-transform: rotate(360deg);
+            }
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+    <title>Loading {{ .Exhibit }}...</title>
+</head>
+
+<body>
+    <div class="container">
+        <div></div>
+        <div class="inner-container">
+            <div></div>
+            <div class="loader-container">
+                <div>
+                    <h2>Loading {{ .Exhibit }}...</h2>
+                    <h3>This shouldn't take long, please stand by</h3>
+                </div>
+                <div>
+                    <div class="loader"></div>
+                </div>
+            </div>
+            <div></div>
+        </div>
+        <div></div>
+    </div>
+</body>
+</html>

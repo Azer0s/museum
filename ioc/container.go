@@ -31,89 +31,6 @@ func NewContainer() *Container {
 	}
 }
 
-func checkCreatorFunc(tt reflect.Type, reflectedCreator reflect.Value) {
-	// check that creator is a function
-	if reflectedCreator.Kind() != reflect.Func {
-		panic("creator must be a function")
-	}
-
-	// check that creator returns a single value
-	if reflectedCreator.Type().NumOut() != 1 {
-		panic("creator must return a single value")
-	}
-
-	//RegisterSingleton[domain.Application](func () domain.Application -> Valid
-	//RegisterSingleton[*domain.ApplicationImpl](func () *domain.ApplicationImpl -> Valid
-	//RegisterSingleton[domain.Application](func () *domain.ApplicationImpl -> Valid
-	//RegisterSingleton[domain.Application](func () *domain.Application -> Invalid
-	//RegisterSingleton[domain.Application](func () domain.ApplicationImpl -> Invalid
-	//RegisterSingleton[domain.ApplicationImpl](func () domain.ApplicationImpl -> Invalid
-	//RegisterSingleton[*domain.ApplicationImpl](func () domain.ApplicationImpl -> Invalid
-	//RegisterSingleton[*domain.ApplicationImpl](func () *domain.Application -> Invalid
-	//RegisterSingleton[*domain.ApplicationImpl](func () domain.Application -> Invalid
-
-	// type paramater has to be an interface or a pointer to a struct
-	if !(tt.Kind() == reflect.Interface) &&
-		!(tt.Kind() == reflect.Ptr && tt.Elem().Kind() == reflect.Struct) {
-		panic("T must be either an interface or a pointer to a struct")
-	}
-
-	// if creator returns a pointer, check that it is a pointer to a struct
-	if reflectedCreator.Type().Out(0).Kind() == reflect.Ptr && reflectedCreator.Type().Out(0).Elem().Kind() != reflect.Struct {
-		panic("if creator returns a pointer, it must be a pointer to a struct")
-	}
-
-	// if T is a pointer to a struct, check that the returned value is a pointer to a struct and that the returned value is equal to T
-	if tt.Kind() == reflect.Ptr && tt.Elem().Kind() == reflect.Struct && (reflectedCreator.Type().Out(0).Kind() != reflect.Ptr || reflectedCreator.Type().Out(0).Elem().Kind() != reflect.Struct || tt != reflectedCreator.Type().Out(0)) {
-		panic("T must be equal to the type of the returned value if T is a pointer to a struct")
-	}
-
-	// if T is an interface, check that the returned value implements it
-	// or if creator returns a pointer to a struct, check that the underlying struct implements T
-	// or T is equal to the returned value
-	if !(tt.Kind() == reflect.Interface && reflectedCreator.Type().Out(0).Implements(tt)) &&
-		!(tt.Kind() == reflect.Interface && reflectedCreator.Type().Out(0).Kind() == reflect.Ptr && reflectedCreator.Type().Out(0).Elem().Implements(tt)) &&
-		tt != reflectedCreator.Type().Out(0) {
-		panic("T must be equal to the type of the returned value or the returned value must implement T")
-	}
-}
-
-func getCreatorParams(reflectedCreator reflect.Value) []reflect.Type {
-
-	// get list of parameters from creator
-	creatorParams := make([]reflect.Type, reflectedCreator.Type().NumIn())
-	for i := 0; i < reflectedCreator.Type().NumIn(); i++ {
-		creatorParams[i] = reflectedCreator.Type().In(i)
-	}
-
-	return creatorParams
-}
-
-func generateFromCreator(c *Container, reflectedCreator reflect.Value) (interface{}, []reflect.Type) {
-	// get list of parameters from creator
-	creatorParams := getCreatorParams(reflectedCreator)
-
-	arguments := make([]reflect.Value, len(creatorParams))
-	for i, param := range creatorParams {
-		// check that parameter is registered
-		if impl, ok := c.implMap[param.String()]; ok {
-			arguments[i] = reflect.ValueOf(impl.value)
-		} else {
-			panic("parameter " + param.String() + " is not registered")
-		}
-	}
-
-	// call creator with registered parameters
-	impl := reflectedCreator.Call(arguments)[0].Interface()
-
-	// check that the returned value is not nil
-	if reflect.ValueOf(impl).IsNil() {
-		panic("creator must not return nil")
-	}
-
-	return impl, creatorParams
-}
-
 func RegisterSingleton[T any](c *Container, creator interface{}) {
 	var t *T = nil
 	tt := reflect.TypeOf(t)
@@ -160,23 +77,6 @@ func RegisterGenerator[T any](c *Container, creator interface{}) {
 		dependencies: creatorParams,
 		kind:         generator,
 	}
-}
-
-func getFromType(c *Container, tt reflect.Type) interface{} {
-	c.implMapMu.RLock()
-	defer c.implMapMu.RUnlock()
-
-	impl, ok := c.implMap[tt.String()]
-	if !ok {
-		panic("implementation for " + tt.String() + " is not registered")
-	}
-
-	if impl.kind == singleton {
-		return impl.value
-	}
-
-	actual, _ := generateFromCreator(c, reflect.ValueOf(impl.value))
-	return actual
 }
 
 func Get[T any](c *Container) T {
@@ -232,37 +132,17 @@ func ForStruct[T any](c *Container) *T {
 }
 
 func ForFunc(c *Container, fn interface{}) {
-	c.implMapMu.RLock()
-	defer c.implMapMu.RUnlock()
-
-	// check that fn is a function
-	if reflect.TypeOf(fn).Kind() != reflect.Func {
-		panic("fn must be a function")
-	}
-
-	// check that the function does not return anything
-	if reflect.TypeOf(fn).NumOut() != 0 {
-		panic("fn must not return anything")
-	}
-
-	reflectedFn := reflect.ValueOf(fn)
-	fnParams := make([]reflect.Type, reflectedFn.Type().NumIn())
-	for i := 0; i < reflectedFn.Type().NumIn(); i++ {
-		fnParams[i] = reflectedFn.Type().In(i)
-	}
-
-	arguments := make([]reflect.Value, len(fnParams))
-	for i, param := range fnParams {
-		// check that parameter is registered
-		if impl, ok := c.implMap[param.String()]; ok {
-			arguments[i] = reflect.ValueOf(impl.value)
-		} else {
-			panic("parameter " + param.String() + " is not registered")
-		}
-	}
+	arguments, reflectedFn := forFuncGetArgumentsAndReflectedFn(c, fn)
 
 	// call fn with registered parameters
 	reflectedFn.Call(arguments)
+}
+
+func ForFuncAsync(c *Container, fn interface{}) {
+	arguments, reflectedFn := forFuncGetArgumentsAndReflectedFn(c, fn)
+
+	// call fn with registered parameters in a goroutine
+	go reflectedFn.Call(arguments)
 }
 
 func GenerateDependencyGraph(c *Container) string {

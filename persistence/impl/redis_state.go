@@ -19,7 +19,7 @@ type RedisStateConnector struct {
 	Config      config.Config
 }
 
-func (rs *RedisStateConnector) withLock(f func()) (err error) {
+func (rs *RedisStateConnector) WithLock(f func() error) (err error) {
 	err = rs.RedisMu.Lock()
 	if err != nil {
 		return errors.New("could not acquire lock")
@@ -32,56 +32,43 @@ func (rs *RedisStateConnector) withLock(f func()) (err error) {
 		}
 	})()
 
-	f()
-	return nil
+	return f()
 }
 
-func (rs *RedisStateConnector) GetApplications() (state []domain.Application, err error) {
-	lockErr := rs.withLock(func() {
-		iter := rs.RedisClient.Scan(context.Background(), 0, rs.Config.GetRedisBaseKey()+":state:app:*", 0).Iterator()
+func (rs *RedisStateConnector) GetExhibits() ([]domain.Exhibit, error) {
+	iter := rs.RedisClient.Scan(context.Background(), 0, rs.Config.GetRedisBaseKey()+":exhibit:*", 0).Iterator()
+	state := make([]domain.Exhibit, 0)
+	for iter.Next(context.Background()) {
+		app := domain.Exhibit{}
+		key := iter.Val()
+		app.Id = key
 
-		for iter.Next(context.Background()) {
-			app := domain.Application{}
-			key := iter.Val()
-			app.Id = key
-
-			res := rs.RedisClient.Get(context.Background(), key)
-			if res.Err() == goredislib.Nil {
-				state = nil
-				err = res.Err()
-				return
-			}
-
-			err := json.Unmarshal([]byte(res.Val()), &app)
-			if err != nil {
-				state = nil
-				return
-			}
-
-			state = append(state, app)
+		res := rs.RedisClient.Get(context.Background(), key)
+		if res.Err() == goredislib.Nil {
+			return nil, res.Err()
 		}
 
-		if err := iter.Err(); err != nil {
-			state = nil
-			return
+		err := json.Unmarshal([]byte(res.Val()), &app)
+		if err != nil {
+			return nil, err
 		}
 
-		err = nil
-		return
-	})
-
-	if lockErr != nil {
-		return nil, lockErr
+		state = append(state, app)
 	}
-	return
+
+	if err := iter.Err(); err != nil {
+		return nil, err
+	}
+
+	return state, nil
 }
 
-func (rs *RedisStateConnector) DeleteApplication(app domain.Application) error {
+func (rs *RedisStateConnector) DeleteExhibit(app domain.Exhibit) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (rs *RedisStateConnector) AddApplication(app domain.Application) error {
+func (rs *RedisStateConnector) AddExhibit(app domain.Exhibit) error {
 	//TODO implement me
 	panic("implement me")
 }

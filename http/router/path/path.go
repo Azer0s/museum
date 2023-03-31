@@ -1,4 +1,4 @@
-package http
+package path
 
 import (
 	"regexp"
@@ -17,12 +17,12 @@ func (nps *namedPathSegment) match(segment string) bool {
 	return nps.Name == segment
 }
 
-type wildcardPathSegment struct {
+type WildcardPathSegment struct {
 	VariableName string
 	Value        string
 }
 
-func (wps *wildcardPathSegment) match(segment string) bool {
+func (wps *WildcardPathSegment) match(segment string) bool {
 	wps.Value = segment
 	return true
 }
@@ -44,6 +44,10 @@ func constructPath(path string) path {
 		panic("illegal path format " + path)
 	}
 
+	if path == "/" {
+		return []pathSegment{}
+	}
+
 	parts := strings.Split(path[1:], "/")
 	var segments []pathSegment
 	for i, part := range parts {
@@ -56,10 +60,10 @@ func constructPath(path string) path {
 			segments = append(segments, &restPathSegment{})
 		} else if dynamicRegex.MatchString(part) {
 			sub := dynamicRegex.FindStringSubmatch(part)
-			segments = append(segments, &wildcardPathSegment{
+			segments = append(segments, &WildcardPathSegment{
 				VariableName: sub[1],
 			})
-		} else if ok, _ := regexp.MatchString("^\\w+$", part); ok {
+		} else if ok, _ := regexp.MatchString("^\\S+$", part); ok {
 			segments = append(segments, &namedPathSegment{
 				Name: part,
 			})
@@ -72,13 +76,19 @@ func constructPath(path string) path {
 	return segments
 }
 
-func (p path) match(path string) (path, bool) {
+func (p path) Match(path string) (path, bool) {
 	if path[0] != '/' {
 		return nil, false
 	}
 
+	if len(p) == 0 && path != "/" {
+		return nil, false
+	} else if len(p) == 0 && path == "/" {
+		return p, true
+	}
+
 	parts := strings.Split(path[1:], "/")
-	if len(parts) < len(p) {
+	if _, ok := p[len(p)-1].(*restPathSegment); !ok && len(parts) != len(p) {
 		return nil, false
 	}
 
@@ -86,10 +96,6 @@ func (p path) match(path string) (path, bool) {
 	copy(clone, p)
 
 	for i, part := range parts {
-		if i >= len(clone) {
-			return nil, false
-		}
-
 		if !clone[i].match(part) {
 			return nil, false
 		}

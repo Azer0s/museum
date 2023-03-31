@@ -8,7 +8,7 @@ type EnvConfig struct {
 	DockerHost   string   `env:"DOCKER_HOST" envDefault:"unix:///var/run/docker.sock"`
 	Hostname     string   `env:"HOSTNAME" envDefault:"localhost"`
 	Port         string   `env:"PORT" envDefault:"8080"`
-	JaegerHost   string   `env:"JAEGER_HOST,required"`
+	JaegerHost   string   `env:"JAEGER_HOST"`
 	Environment  string   `env:"ENVIRONMENT" envDefault:"development"`
 }
 

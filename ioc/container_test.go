@@ -445,3 +445,30 @@ func TestForFuncHasUnregisteredParameter(t *testing.T) {
 
 	ForFunc(c, func(foo *Foo) {})
 }
+
+func TestForFuncAsync(t *testing.T) {
+	c := NewContainer()
+
+	RegisterSingleton[*Foo](c, NewFoo)
+	RegisterSingleton[*Bar](c, NewBar)
+
+	doneChan := make(chan struct{})
+
+	ForFuncAsync(c, func(foo *Foo, bar *Bar) {
+		if foo == nil {
+			t.Errorf("foo is nil")
+		}
+
+		if bar == nil {
+			t.Errorf("bar is nil")
+		}
+
+		fmt.Println("done")
+
+		doneChan <- struct{}{}
+	})
+
+	fmt.Println("waiting for done")
+
+	<-doneChan
+}

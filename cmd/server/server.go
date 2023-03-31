@@ -7,9 +7,15 @@ import (
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 	"museum/config"
+	"museum/http/api"
+	"museum/http/exhibit"
+	"museum/http/health"
+	"museum/http/router"
 	"museum/ioc"
 	"museum/observability"
 	"museum/persistence"
+	"museum/service"
+	"net/http"
 )
 
 func Run() {
@@ -36,6 +42,22 @@ func Run() {
 
 	// register shared state
 	ioc.RegisterSingleton[persistence.SharedPersistentEmittedState](c, persistence.NewSharedPersistentEmittedState)
+
+	// register services
+	ioc.RegisterSingleton[service.ExhibitService](c, service.NewExhibitServiceImpl)
+
+	// register router and routes
+	ioc.RegisterSingleton[*router.Mux](c, router.NewMux)
+	ioc.ForFunc(c, health.RegisterRoutes)
+	ioc.ForFunc(c, exhibit.RegisterRoutes)
+	ioc.ForFunc(c, api.RegisterRoutes)
+
+	ioc.ForFunc(c, func(router *router.Mux, config config.Config) {
+		err := http.ListenAndServe(fmt.Sprintf(":%s", config.GetPort()), router)
+		if err != nil {
+			panic(err)
+		}
+	})
 
 	graph := ioc.GenerateDependencyGraph(c)
 	fmt.Println(graph)

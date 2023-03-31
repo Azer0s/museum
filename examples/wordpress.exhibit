@@ -1,0 +1,30 @@
+name: my-research-project
+expose: wordpress
+lease: 2h
+objects:
+  - name: db
+    image: mariadb
+    label: latest
+    environment:
+      MYSQL_ROOT_PASSWORD: wordpress
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+    mounts:
+      mysql: /var/lib/mysql
+    volumes:
+      - name: db_data
+        driver:
+          type: local
+          config:
+            path: /data/mysql
+
+  - name: wordpress
+    image: wordpress
+    label: latest
+    port: 80
+    environment:
+        WORDPRESS_DB_HOST: db
+        WORDPRESS_DB_USER: wordpress
+        WORDPRESS_DB_PASSWORD: wordpress
+        WORDPRESS_DB_NAME: wordpress
