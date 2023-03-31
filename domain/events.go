@@ -9,7 +9,7 @@ const (
 	LeaseExpiredEventType = "museum.exhibit.lease.expired"
 
 	source      = "museum"
-	contentType = "exhibit/json"
+	contentType = "application/json"
 )
 
 func newEvent(eventType string, exhibit Exhibit) (cloudevents.Event, error) {

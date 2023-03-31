@@ -43,6 +43,29 @@ func (s StateBundle) GetExhibits() []domain.Exhibit {
 }
 
 func (s StateBundle) AddExhibit(app domain.Exhibit) error {
-	//TODO implement me
-	panic("implement me")
+	s.CurrentStateMutex.Lock()
+	defer s.CurrentStateMutex.Unlock()
+
+	return s.SharedPersistentState.WithLock(func() error {
+		createEvent, err := domain.NewCreateEvent(app)
+		if err != nil {
+			return err
+		}
+
+		err = s.Emitter.EmitEvent(createEvent)
+		if err != nil {
+			return err
+		}
+
+		// TODO: wait for event to be consumed
+
+		err = s.SharedPersistentState.AddExhibit(app)
+		if err != nil {
+			return err
+		}
+
+		s.CurrentState = append(s.CurrentState, app)
+
+		return nil
+	})
 }

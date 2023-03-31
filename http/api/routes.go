@@ -53,11 +53,16 @@ func createExhibit(exhibitService service.ExhibitService) router.MuxHandlerFunc 
 			return
 		}
 
-		// TODO: validate exhibit
-		// TODO: create exhibit
+		err = exhibitService.CreateExhibit(*exhibit)
+		if err != nil {
+			res.WriteHeader(http.StatusInternalServerError)
+		}
 
 		res.WriteHeader(http.StatusCreated)
 		err = res.WriteJson(map[string]string{"status": "Created"})
+		if err != nil {
+			// TODO: log error
+		}
 	}
 }
 

@@ -69,6 +69,21 @@ func (rs *RedisStateConnector) DeleteExhibitById(id string) error {
 }
 
 func (rs *RedisStateConnector) AddExhibit(app domain.Exhibit) error {
-	//TODO implement me
-	panic("implement me")
+	// check if app already exists, if so, return error
+	res := rs.RedisClient.Get(context.Background(), rs.Config.GetRedisBaseKey()+":exhibit:"+app.Id)
+	if res.Err() == nil {
+		return errors.New("exhibit already exists")
+	}
+
+	b, err := json.Marshal(app)
+	if err != nil {
+		return err
+	}
+
+	set := rs.RedisClient.Set(context.Background(), rs.Config.GetRedisBaseKey()+":exhibit:"+app.Id, b, 0)
+	if set.Err() != nil {
+		return set.Err()
+	}
+
+	return nil
 }

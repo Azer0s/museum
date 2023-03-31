@@ -1,6 +1,11 @@
 package tool
 
-import "museum/domain"
+import (
+	"bytes"
+	"encoding/json"
+	"museum/domain"
+	"net/http"
+)
 
 type ApiClient interface {
 	CreateExhibit(exhibit *domain.Exhibit) error
@@ -11,5 +16,15 @@ type ApiClientImpl struct {
 }
 
 func (a *ApiClientImpl) CreateExhibit(exhibit *domain.Exhibit) error {
-	panic("implement me")
+	b, err := json.Marshal(exhibit)
+	if err != nil {
+		return err
+	}
+
+	_, err = http.Post(a.BaseUrl+"/api/exhibits", "application/json", bytes.NewBuffer(b))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
