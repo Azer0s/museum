@@ -35,9 +35,9 @@ func (rps *restPathSegment) match(segment string) bool {
 	return true
 }
 
-type path []pathSegment
+type Path []pathSegment
 
-func constructPath(path string) path {
+func ConstructPath(path string) Path {
 	dynamicRegex, _ := regexp.Compile("^\\{(\\w+)\\}$")
 
 	if path[0] != '/' {
@@ -76,7 +76,7 @@ func constructPath(path string) path {
 	return segments
 }
 
-func (p path) Match(path string) (path, bool) {
+func (p Path) Match(path string) (Path, bool) {
 	if path[0] != '/' {
 		return nil, false
 	}

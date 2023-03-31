@@ -7,13 +7,14 @@ import (
 type SharedPersistentState interface {
 	WithLock(f func() error) (err error)
 	GetExhibits() ([]domain.Exhibit, error)
-	DeleteExhibit(app domain.Exhibit) error
+	DeleteExhibitById(id string) error
 	AddExhibit(app domain.Exhibit) error
 }
 
 type SharedPersistentEmittedState interface {
 	GetExhibits() []domain.Exhibit
+	GetExhibitById(id string) (*domain.Exhibit, error)
 	AddExhibit(app domain.Exhibit) error
-	RenewExhibitLease(app domain.Exhibit) error
-	ExpireExhibitLease(app domain.Exhibit) error
+	RenewExhibitLeaseById(id string) error
+	ExpireExhibitLease(id string) error
 }

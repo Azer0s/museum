@@ -4,7 +4,7 @@ import "testing"
 
 func TestNamedPathSegment(t *testing.T) {
 	path := "/foo/bar"
-	segments := constructPath(path)
+	segments := ConstructPath(path)
 	if len(segments) != 2 {
 		t.Errorf("Expected 2 segments, got %d", len(segments))
 	}
@@ -25,7 +25,7 @@ func TestIllegalPath(t *testing.T) {
 		}
 	}()
 
-	constructPath("foo")
+	ConstructPath("foo")
 }
 
 func TestRestInMiddle(t *testing.T) {
@@ -35,7 +35,7 @@ func TestRestInMiddle(t *testing.T) {
 		}
 	}()
 
-	constructPath("/foo/bar/>>/baz")
+	ConstructPath("/foo/bar/>>/baz")
 }
 
 func TestWhitespacePath(t *testing.T) {
@@ -45,12 +45,12 @@ func TestWhitespacePath(t *testing.T) {
 		}
 	}()
 
-	constructPath("/foo bar")
+	ConstructPath("/foo bar")
 }
 
 func TestWildcardPathSegmentString(t *testing.T) {
 	path := "/{foo}"
-	segments := constructPath(path)
+	segments := ConstructPath(path)
 	if len(segments) != 1 {
 		t.Errorf("Expected 1 segment, got %d", len(segments))
 	}
@@ -65,7 +65,7 @@ func TestWildcardPathSegmentString(t *testing.T) {
 
 func TestRestPathSegment(t *testing.T) {
 	path := "/foo/bar/>>"
-	segments := constructPath(path)
+	segments := ConstructPath(path)
 	if len(segments) != 3 {
 		t.Errorf("Expected 3 segments, got %d", len(segments))
 	}
@@ -85,7 +85,7 @@ func TestRestPathSegment(t *testing.T) {
 
 func TestRestPathSegmentWithWildcard(t *testing.T) {
 	path := "/foo/{bar}/>>"
-	segments := constructPath(path)
+	segments := ConstructPath(path)
 	if len(segments) != 3 {
 		t.Errorf("Expected 3 segments, got %d", len(segments))
 	}
@@ -109,7 +109,7 @@ func TestRestPathSegmentWithWildcard(t *testing.T) {
 
 func TestMatchStringWithRestPathSegment(t *testing.T) {
 	path := "/foo/bar/>>"
-	segments := constructPath(path)
+	segments := ConstructPath(path)
 	var paths []pathSegment
 	var ok bool
 
@@ -124,7 +124,7 @@ func TestMatchStringWithRestPathSegment(t *testing.T) {
 
 func TestMatchStringWithWildcardPathSegment(t *testing.T) {
 	path := "/{foo}/bar/{baz}"
-	segments := constructPath(path)
+	segments := ConstructPath(path)
 	var paths []pathSegment
 	var ok bool
 
@@ -143,7 +143,7 @@ func TestMatchStringWithWildcardPathSegment(t *testing.T) {
 
 func TestMatchStringWithWildcardPathSegmentAndRestPathSegment(t *testing.T) {
 	path := "/{foo}/bar/{baz}/>>"
-	segments := constructPath(path)
+	segments := ConstructPath(path)
 	var paths []pathSegment
 	var ok bool
 
@@ -166,7 +166,7 @@ func TestMatchStringWithWildcardPathSegmentAndRestPathSegment(t *testing.T) {
 
 func TestMatchInvalidString(t *testing.T) {
 	path := "/"
-	segments := constructPath(path)
+	segments := ConstructPath(path)
 	var ok bool
 
 	if _, ok = segments.Match("foo/bar/baz"); ok {
@@ -175,7 +175,7 @@ func TestMatchInvalidString(t *testing.T) {
 }
 func TestMatchTooLongPath(t *testing.T) {
 	path := "/foo"
-	segments := constructPath(path)
+	segments := ConstructPath(path)
 	var ok bool
 
 	if _, ok = segments.Match("/foo/bar/baz"); ok {
@@ -185,7 +185,7 @@ func TestMatchTooLongPath(t *testing.T) {
 
 func TestMatchTooLongPath2(t *testing.T) {
 	path := "/foo/bar"
-	segments := constructPath(path)
+	segments := ConstructPath(path)
 	var ok bool
 
 	if _, ok = segments.Match("/foo/bar/baz"); ok {
@@ -195,7 +195,7 @@ func TestMatchTooLongPath2(t *testing.T) {
 
 func TestIndexMatch(t *testing.T) {
 	path := "/"
-	segments := constructPath(path)
+	segments := ConstructPath(path)
 	var ok bool
 
 	if _, ok = segments.Match("/"); !ok {
@@ -205,7 +205,7 @@ func TestIndexMatch(t *testing.T) {
 
 func TestIndexMatchFail(t *testing.T) {
 	path := "/"
-	segments := constructPath(path)
+	segments := ConstructPath(path)
 	var ok bool
 
 	if _, ok = segments.Match("/foo"); ok {
@@ -215,7 +215,7 @@ func TestIndexMatchFail(t *testing.T) {
 
 func TestPathMatchFail(t *testing.T) {
 	path := "/foo"
-	segments := constructPath(path)
+	segments := ConstructPath(path)
 	var ok bool
 
 	if _, ok = segments.Match("/bar"); ok {
@@ -225,7 +225,7 @@ func TestPathMatchFail(t *testing.T) {
 
 func TestPathMatchFail2(t *testing.T) {
 	path := "/foo"
-	segments := constructPath(path)
+	segments := ConstructPath(path)
 	var ok bool
 
 	if _, ok = segments.Match("/foo/bar"); ok {

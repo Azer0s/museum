@@ -3,7 +3,6 @@ package exhibit
 import (
 	_ "embed"
 	"museum/http/router"
-	"museum/http/router/path"
 	"net/http"
 	"text/template"
 )
@@ -15,24 +14,27 @@ type LoadingPageTemplate struct {
 	Exhibit string
 }
 
-func RegisterRoutes(router *router.Mux) {
+func loadingPageHandler() router.MuxHandlerFunc {
 	tmpl, _ := template.New("loading").Parse(string(loadingPage))
 
-	router.AddRoute(path.Get("/exhibit/{id}/>>", func(w http.ResponseWriter, r *http.Request, pathParameters map[string]string) {
+	return func(res *router.Response, _ *http.Request, parameters map[string]string) {
 		idMap := map[string]string{
 			"foo": "Foo App",
 			"bar": "Bar App",
 		}
 
-		appName, ok := idMap[pathParameters["id"]]
+		appName, ok := idMap[parameters["id"]]
 		if !ok {
 			appName = "Museum"
 		}
 
-		err := tmpl.Execute(w, LoadingPageTemplate{Exhibit: appName})
+		err := tmpl.Execute(res, LoadingPageTemplate{Exhibit: appName})
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			res.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-	}))
+	}
+}
+func RegisterRoutes(r *router.Mux) {
+	r.AddRoute(router.Get("/exhibit/{id}/>>", loadingPageHandler()))
 }

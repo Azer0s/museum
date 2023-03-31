@@ -8,6 +8,7 @@ import (
 
 type ExhibitService interface {
 	GetExhibits() []domain.Exhibit
+	GetExhibitById(id string) (*domain.Exhibit, error)
 }
 
 func NewExhibitServiceImpl(state persistence.SharedPersistentEmittedState) *impl.ExhibitServiceImpl {

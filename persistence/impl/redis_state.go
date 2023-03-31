@@ -63,7 +63,7 @@ func (rs *RedisStateConnector) GetExhibits() ([]domain.Exhibit, error) {
 	return state, nil
 }
 
-func (rs *RedisStateConnector) DeleteExhibit(app domain.Exhibit) error {
+func (rs *RedisStateConnector) DeleteExhibitById(id string) error {
 	//TODO implement me
 	panic("implement me")
 }

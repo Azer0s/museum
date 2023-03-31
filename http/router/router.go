@@ -7,7 +7,7 @@ import (
 )
 
 type Mux struct {
-	routes []path.Route
+	routes []Route
 	mux    *http.ServeMux
 }
 
@@ -37,7 +37,7 @@ func (r *Mux) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 					}
 				}
 
-				route.Handler(writer, request, pathParams)
+				route.Handler(&Response{writer}, request, pathParams)
 				return
 			}
 		}
@@ -55,6 +55,6 @@ func NewMux() *Mux {
 	return &Mux{}
 }
 
-func (r *Mux) AddRoute(route path.Route) {
+func (r *Mux) AddRoute(route Route) {
 	r.routes = append(r.routes, route)
 }
