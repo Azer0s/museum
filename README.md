@@ -30,14 +30,16 @@ Applications are configured with so-called "exhibit" files. These files are simp
 name: my-research-project
 objects:
   - name: my-database
-    image: postgres:9.6
+    image: postgres
+    label: 9.6
     environment:
       POSTGRES_PASSWORD: mysecretpassword
     livecheck:
       type: tcp
-      port: 5432
+      config:
+        port: 5432
     mounts:
-      - postgres:/var/lib/postgresql/data
+      postgres: /var/lib/postgresql/data
     volumes:
       # these volumes are always read-only, 
       # since the applications can be really old and have several security vulnerabilities,
@@ -45,7 +47,8 @@ objects:
       - name: postgres
         driver:
           type: local
-          path: /var/lib/postgresql/data
+          config:
+            path: /var/lib/postgresql/data
       
   - name: my-webapp
     image: my-research-project:latest
@@ -53,9 +56,10 @@ objects:
       DATABASE_URL: postgres://postgres:mysecretpassword@my-database:5432/postgres
     livecheck:
       type: http
-      path: /health
-      port: 8080
-      status: 200
+      config:
+        path: /health
+        port: 8080
+        status: 200
 
 order:
   - my-database

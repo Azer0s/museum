@@ -6,6 +6,7 @@ type Exhibit struct {
 	Expose  string   `json:"expose" yaml:"expose"`
 	Objects []Object `json:"objects" yaml:"objects"`
 	Lease   string   `json:"lease" yaml:"lease"`
+	Order   []string `json:"order" yaml:"order"`
 }
 
 type Object struct {
