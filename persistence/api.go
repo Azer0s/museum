@@ -30,6 +30,7 @@ func NewKafkaConsumer(config config.Config, consumerGroup *kafka.ConsumerGroup) 
 	return &impl.KafkaConsumer{
 		ConsumerGroup: consumerGroup,
 		Brokers:       config.GetKafkaBrokers(),
+		Config:        config,
 	}
 }
 
@@ -38,10 +39,28 @@ func NewSharedPersistentEmittedState(state SharedPersistentState, emitter Emitte
 		SharedPersistentState: state,
 		Emitter:               emitter,
 		Consumer:              consumer,
+		ConfirmEvents:         make(map[string]chan struct{}),
+		ConfirmEventsMutex:    &sync.RWMutex{},
 	}
+	events, err := consumer.GetEvents()
 
-	err := state.WithLock(func() error {
-		// TODO: start go routine to listen for kafka messages
+	err = state.WithLock(func() error {
+		go func() {
+			for {
+				m := <-events
+
+				sb.ConfirmEventsMutex.RLock()
+				if ch, ok := sb.ConfirmEvents[m.ID()]; ok {
+					ch <- struct{}{}
+					delete(sb.ConfirmEvents, m.ID())
+					sb.ConfirmEventsMutex.RUnlock()
+					continue
+				}
+				sb.ConfirmEventsMutex.RUnlock()
+
+				// TODO: handle other events
+			}
+		}()
 
 		currentState, err := state.GetExhibits()
 		if err != nil {

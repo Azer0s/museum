@@ -12,6 +12,8 @@ type StateBundle struct {
 	Consumer              Consumer
 	CurrentState          []domain.Exhibit
 	CurrentStateMutex     *sync.RWMutex
+	ConfirmEvents         map[string]chan struct{}
+	ConfirmEventsMutex    *sync.RWMutex
 }
 
 func (s StateBundle) GetExhibitById(id string) (*domain.Exhibit, error) {
@@ -52,12 +54,17 @@ func (s StateBundle) AddExhibit(app domain.Exhibit) error {
 			return err
 		}
 
+		received, err := s.EventReceived(createEvent.ID())
+		if err != nil {
+			return err
+		}
+
 		err = s.Emitter.EmitEvent(createEvent)
 		if err != nil {
 			return err
 		}
 
-		// TODO: wait for event to be consumed
+		<-received
 
 		err = s.SharedPersistentState.AddExhibit(app)
 		if err != nil {
@@ -68,4 +75,16 @@ func (s StateBundle) AddExhibit(app domain.Exhibit) error {
 
 		return nil
 	})
+}
+
+func (s StateBundle) EventReceived(eventId string) (<-chan struct{}, error) {
+	s.ConfirmEventsMutex.Lock()
+	defer s.ConfirmEventsMutex.Unlock()
+
+	if _, ok := s.ConfirmEvents[eventId]; ok {
+		return nil, errors.New("event receiver already exists")
+	}
+
+	s.ConfirmEvents[eventId] = make(chan struct{})
+	return s.ConfirmEvents[eventId], nil
 }

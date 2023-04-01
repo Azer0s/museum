@@ -29,6 +29,18 @@ func NewKafkaWriter(config config.Config) *kafka.Writer {
 }
 
 func NewKafkaConsumerGroup(config config.Config) *kafka.ConsumerGroup {
+	client := kafka.Client{
+		Addr: kafka.TCP(config.GetKafkaBrokers()[0]),
+	}
+	_, err := client.CreateTopics(context.Background(), &kafka.CreateTopicsRequest{
+		Topics: []kafka.TopicConfig{
+			{Topic: config.GetKafkaTopic()},
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+
 	group, err := kafka.NewConsumerGroup(kafka.ConsumerGroupConfig{
 		ID:      uuid.New().String(),
 		Brokers: config.GetKafkaBrokers(),

@@ -1,6 +1,9 @@
 package domain
 
-import cloudevents "github.com/cloudevents/sdk-go/v2/event"
+import (
+	cloudevents "github.com/cloudevents/sdk-go/v2/event"
+	"github.com/google/uuid"
+)
 
 const (
 	CreateEventType       = "museum.exhibit.create"
@@ -21,6 +24,8 @@ func newEvent(eventType string, exhibit Exhibit) (cloudevents.Event, error) {
 	if err != nil {
 		return cloudevents.Event{}, err
 	}
+
+	event.SetID(uuid.New().String())
 
 	return event, nil
 }

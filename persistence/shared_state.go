@@ -14,6 +14,7 @@ type SharedPersistentState interface {
 type SharedPersistentEmittedState interface {
 	GetExhibits() []domain.Exhibit
 	GetExhibitById(id string) (*domain.Exhibit, error)
+	EventReceived(eventId string) (<-chan struct{}, error)
 	AddExhibit(app domain.Exhibit) error
 	RenewExhibitLeaseById(id string) error
 	ExpireExhibitLease(id string) error

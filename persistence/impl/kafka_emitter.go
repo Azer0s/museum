@@ -11,9 +11,14 @@ type KafkaEmitter struct {
 }
 
 func (k KafkaEmitter) EmitEvent(event cloudevents.Event) error {
-	err := k.Writer.WriteMessages(context.Background(), kafka.Message{
+	e, err := event.MarshalJSON()
+	if err != nil {
+		return err
+	}
+
+	err = k.Writer.WriteMessages(context.Background(), kafka.Message{
 		Key:   []byte(event.ID()),
-		Value: []byte(event.String()),
+		Value: e,
 	})
 	if err != nil {
 		return err
