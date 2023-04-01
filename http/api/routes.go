@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"go.uber.org/zap"
 	"io"
 	"museum/domain"
 	"museum/http/router"
@@ -9,65 +10,70 @@ import (
 	"net/http"
 )
 
-func getExhibits(exhibitService service.ExhibitService) router.MuxHandlerFunc {
-	return func(res *router.Response, req *http.Request, params map[string]string) {
+func getExhibits(exhibitService service.ExhibitService, log *zap.SugaredLogger) router.MuxHandlerFunc {
+	return func(res *router.Response, req *router.Request) {
 		exhibits := exhibitService.GetExhibits()
 		err := res.WriteJson(exhibits)
 		if err != nil {
-			//TODO: log error
+			log.Warnw("error writing json", "error", err, "requestId", req.RequestID)
 		}
 	}
 }
 
-func getExhibitById(exhibitService service.ExhibitService) router.MuxHandlerFunc {
-	return func(res *router.Response, req *http.Request, params map[string]string) {
-		exhibitId := params["id"]
+func getExhibitById(exhibitService service.ExhibitService, log *zap.SugaredLogger) router.MuxHandlerFunc {
+	return func(res *router.Response, req *router.Request) {
+		exhibitId := req.Params["id"]
 		exhibit, err := exhibitService.GetExhibitById(exhibitId)
 		if err != nil {
 			res.WriteHeader(http.StatusNotFound)
 			err := res.WriteJson(map[string]string{"status": "Not Found"})
 			if err != nil {
-				// TODO: log error
+				log.Warnw("error writing json", "error", err, "requestId", req.RequestID)
 			}
 		}
 
 		err = res.WriteJson(exhibit)
 		if err != nil {
-			// TODO: log error
+			log.Warnw("error writing json", "error", err, "requestId", req.RequestID)
 		}
 	}
 }
 
-func createExhibit(exhibitService service.ExhibitService) router.MuxHandlerFunc {
-	return func(res *router.Response, req *http.Request, params map[string]string) {
+func createExhibit(exhibitService service.ExhibitService, log *zap.SugaredLogger) router.MuxHandlerFunc {
+	return func(res *router.Response, req *router.Request) {
+		// TODO: create span to trace API call
+
 		body, err := io.ReadAll(req.Body)
 		if err != nil {
-			// TODO: log error
 			return
 		}
 
 		exhibit := &domain.Exhibit{}
 		err = json.Unmarshal(body, exhibit)
 		if err != nil {
-			// TODO: log error
+			log.Warnw("error unmarshalling json", "error", err, "requestId", req.RequestID)
 			return
 		}
 
-		err = exhibitService.CreateExhibit(*exhibit)
+		err = exhibitService.CreateExhibit(domain.CreateExhibit{
+			Exhibit:   *exhibit,
+			RequestID: req.RequestID,
+		})
 		if err != nil {
+			log.Errorw("error creating exhibit", "error", err, "requestId", req.RequestID)
 			res.WriteHeader(http.StatusInternalServerError)
 		}
 
 		res.WriteHeader(http.StatusCreated)
 		err = res.WriteJson(map[string]string{"status": "Created"})
 		if err != nil {
-			// TODO: log error
+			log.Warnw("error writing json", "error", err, "requestId", req.RequestID)
 		}
 	}
 }
 
-func RegisterRoutes(r *router.Mux, exhibitService service.ExhibitService) {
-	r.AddRoute(router.Get("/api/exhibits", getExhibits(exhibitService)))
-	r.AddRoute(router.Get("/api/exhibits/{id}", getExhibitById(exhibitService)))
-	r.AddRoute(router.Post("/api/exhibits", createExhibit(exhibitService)))
+func RegisterRoutes(r *router.Mux, exhibitService service.ExhibitService, log *zap.SugaredLogger) {
+	r.AddRoute(router.Get("/api/exhibits", getExhibits(exhibitService, log)))
+	r.AddRoute(router.Get("/api/exhibits/{id}", getExhibitById(exhibitService, log)))
+	r.AddRoute(router.Post("/api/exhibits", createExhibit(exhibitService, log)))
 }

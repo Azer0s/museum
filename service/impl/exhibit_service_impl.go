@@ -18,17 +18,17 @@ func (e ExhibitServiceImpl) GetExhibitById(id string) (*domain.Exhibit, error) {
 	return e.State.GetExhibitById(id)
 }
 
-func (e ExhibitServiceImpl) CreateExhibit(exhibit domain.Exhibit) error {
+func (e ExhibitServiceImpl) CreateExhibit(createExhibitRequest domain.CreateExhibit) error {
 	// TODO: validate exhibit
 
 	// give exhibit a unique id
-	exhibit.Id = uuid.New().String()
+	createExhibitRequest.Exhibit.Id = uuid.New().String()
 
 	// set runtime state
-	exhibit.RuntimeInfo = domain.ExhibitRuntimeInfo{
+	createExhibitRequest.Exhibit.RuntimeInfo = domain.ExhibitRuntimeInfo{
 		Status:            domain.NotCreated,
 		RelatedContainers: []string{},
 	}
 
-	return e.State.AddExhibit(exhibit)
+	return e.State.AddExhibit(createExhibitRequest)
 }

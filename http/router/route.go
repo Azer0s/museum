@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-type MuxHandlerFunc func(*Response, *http.Request, map[string]string)
+type MuxHandlerFunc func(*Response, *Request)
 
 type Route struct {
 	Path    path.Path

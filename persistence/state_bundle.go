@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"errors"
+	"go.uber.org/zap"
 	"museum/domain"
 	"sync"
 )
@@ -14,6 +15,7 @@ type StateBundle struct {
 	CurrentStateMutex     *sync.RWMutex
 	ConfirmEvents         map[string]chan struct{}
 	ConfirmEventsMutex    *sync.RWMutex
+	Log                   *zap.SugaredLogger
 }
 
 func (s StateBundle) GetExhibitById(id string) (*domain.Exhibit, error) {
@@ -44,34 +46,38 @@ func (s StateBundle) GetExhibits() []domain.Exhibit {
 	return s.CurrentState
 }
 
-func (s StateBundle) AddExhibit(app domain.Exhibit) error {
+func (s StateBundle) AddExhibit(app domain.CreateExhibit) error {
 	s.CurrentStateMutex.Lock()
 	defer s.CurrentStateMutex.Unlock()
 
 	return s.SharedPersistentState.WithLock(func() error {
-		createEvent, err := domain.NewCreateEvent(app)
+		createEvent, err := domain.NewCreateEvent(app.Exhibit)
 		if err != nil {
+			s.Log.Debugw("failed to create event", "error", err, "requestId", app.RequestID)
 			return err
 		}
 
 		received, err := s.EventReceived(createEvent.ID())
 		if err != nil {
+			s.Log.Debugw("failed to create event receiver", "error", err, "requestId", app.RequestID)
 			return err
 		}
 
 		err = s.Emitter.EmitEvent(createEvent)
 		if err != nil {
+			s.Log.Debugw("failed to emit event", "error", err, "requestId", app.RequestID)
 			return err
 		}
 
 		<-received
 
-		err = s.SharedPersistentState.AddExhibit(app)
+		err = s.SharedPersistentState.AddExhibit(app.Exhibit)
 		if err != nil {
+			s.Log.Debugw("failed to add exhibit to persistent state", "error", err, "requestId", app.RequestID)
 			return err
 		}
 
-		s.CurrentState = append(s.CurrentState, app)
+		s.CurrentState = append(s.CurrentState, app.Exhibit)
 
 		return nil
 	})

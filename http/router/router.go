@@ -2,6 +2,8 @@ package router
 
 import (
 	"encoding/json"
+	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"museum/http/router/path"
 	"net/http"
 )
@@ -9,6 +11,7 @@ import (
 type Mux struct {
 	routes []Route
 	mux    *http.ServeMux
+	log    *zap.SugaredLogger
 }
 
 type Status struct {
@@ -27,6 +30,9 @@ func WriteStatus(writer http.ResponseWriter, status Status) error {
 }
 
 func (r *Mux) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	requestId := uuid.New().String()
+	r.log.Debugw("request received", "method", request.Method, "path", request.URL.Path, "requestId", requestId)
+
 	for _, route := range r.routes {
 		if segments, ok := route.Path.Match(request.URL.Path); ok {
 			if route.Method == request.Method {
@@ -37,7 +43,11 @@ func (r *Mux) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 					}
 				}
 
-				route.Handler(&Response{writer}, request, pathParams)
+				route.Handler(&Response{writer}, &Request{
+					Request:   request,
+					Params:    pathParams,
+					RequestID: requestId,
+				})
 				return
 			}
 		}
@@ -46,13 +56,15 @@ func (r *Mux) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	writer.WriteHeader(http.StatusNotFound)
 	err := WriteStatus(writer, Status{Status: "Not Found"})
 	if err != nil {
-		//TODO: log error
+		r.log.Warnw("no route found", "method", request.Method, "path", request.URL.Path, "requestId", requestId)
 		return
 	}
 }
 
-func NewMux() *Mux {
-	return &Mux{}
+func NewMux(log *zap.SugaredLogger) *Mux {
+	return &Mux{
+		log: log,
+	}
 }
 
 func (r *Mux) AddRoute(route Route) {

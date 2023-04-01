@@ -6,6 +6,7 @@ import (
 	"github.com/segmentio/kafka-go"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
+	"go.uber.org/zap"
 	"museum/config"
 	"museum/http/api"
 	"museum/http/exhibit"
@@ -20,6 +21,9 @@ import (
 
 func Run() {
 	c := ioc.NewContainer()
+
+	// register logger
+	ioc.RegisterSingleton[*zap.SugaredLogger](c, observability.NewLogger)
 
 	// register config
 	ioc.RegisterSingleton[config.Config](c, config.NewEnvConfig)
@@ -52,7 +56,8 @@ func Run() {
 	ioc.ForFunc(c, exhibit.RegisterRoutes)
 	ioc.ForFunc(c, api.RegisterRoutes)
 
-	ioc.ForFunc(c, func(router *router.Mux, config config.Config) {
+	ioc.ForFunc(c, func(router *router.Mux, config config.Config, log *zap.SugaredLogger) {
+		log.Infof("Starting server on port %s", config.GetPort())
 		err := http.ListenAndServe(fmt.Sprintf(":%s", config.GetPort()), router)
 		if err != nil {
 			panic(err)

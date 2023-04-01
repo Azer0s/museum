@@ -5,17 +5,17 @@ import (
 	"github.com/google/uuid"
 	goredislib "github.com/redis/go-redis/v9"
 	"github.com/segmentio/kafka-go"
+	"go.uber.org/zap"
 	"museum/config"
 )
 
-func NewRedisClient(config config.Config) *goredislib.Client {
+func NewRedisClient(config config.Config, log *zap.SugaredLogger) *goredislib.Client {
 	redisClient := goredislib.NewClient(&goredislib.Options{
 		Addr: config.GetRedisHost(),
 	})
 
 	if _, err := redisClient.Ping(context.Background()).Result(); err != nil {
-		panic(err)
-		return nil
+		log.Panic(err)
 	}
 
 	return redisClient
@@ -28,7 +28,7 @@ func NewKafkaWriter(config config.Config) *kafka.Writer {
 	}
 }
 
-func NewKafkaConsumerGroup(config config.Config) *kafka.ConsumerGroup {
+func NewKafkaConsumerGroup(config config.Config, log *zap.SugaredLogger) *kafka.ConsumerGroup {
 	client := kafka.Client{
 		Addr: kafka.TCP(config.GetKafkaBrokers()[0]),
 	}
@@ -38,7 +38,7 @@ func NewKafkaConsumerGroup(config config.Config) *kafka.ConsumerGroup {
 		},
 	})
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 
 	group, err := kafka.NewConsumerGroup(kafka.ConsumerGroupConfig{
@@ -48,7 +48,7 @@ func NewKafkaConsumerGroup(config config.Config) *kafka.ConsumerGroup {
 	})
 
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 
 	return group

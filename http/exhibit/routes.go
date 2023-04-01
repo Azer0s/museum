@@ -17,13 +17,13 @@ type LoadingPageTemplate struct {
 func loadingPageHandler() router.MuxHandlerFunc {
 	tmpl, _ := template.New("loading").Parse(string(loadingPage))
 
-	return func(res *router.Response, _ *http.Request, parameters map[string]string) {
+	return func(res *router.Response, req *router.Request) {
 		idMap := map[string]string{
 			"foo": "Foo App",
 			"bar": "Bar App",
 		}
 
-		appName, ok := idMap[parameters["id"]]
+		appName, ok := idMap[req.Params["id"]]
 		if !ok {
 			appName = "Museum"
 		}

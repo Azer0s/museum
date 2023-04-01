@@ -5,6 +5,7 @@ import (
 	"github.com/go-redsync/redsync/v4/redis/goredis/v9"
 	goredislib "github.com/redis/go-redis/v9"
 	"github.com/segmentio/kafka-go"
+	"go.uber.org/zap"
 	"museum/config"
 	"museum/persistence/impl"
 	"sync"
@@ -34,13 +35,14 @@ func NewKafkaConsumer(config config.Config, consumerGroup *kafka.ConsumerGroup) 
 	}
 }
 
-func NewSharedPersistentEmittedState(state SharedPersistentState, emitter Emitter, consumer Consumer) SharedPersistentEmittedState {
+func NewSharedPersistentEmittedState(state SharedPersistentState, emitter Emitter, consumer Consumer, log *zap.SugaredLogger) SharedPersistentEmittedState {
 	sb := &StateBundle{
 		SharedPersistentState: state,
 		Emitter:               emitter,
 		Consumer:              consumer,
 		ConfirmEvents:         make(map[string]chan struct{}),
 		ConfirmEventsMutex:    &sync.RWMutex{},
+		Log:                   log,
 	}
 	events, err := consumer.GetEvents()
 
@@ -64,6 +66,7 @@ func NewSharedPersistentEmittedState(state SharedPersistentState, emitter Emitte
 
 		currentState, err := state.GetExhibits()
 		if err != nil {
+			log.Errorw("failed to get current state", "error", err)
 			return err
 		}
 
@@ -74,7 +77,7 @@ func NewSharedPersistentEmittedState(state SharedPersistentState, emitter Emitte
 	})
 
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 
 	return sb

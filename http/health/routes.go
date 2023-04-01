@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func healthEndpoint(res *router.Response, _ *http.Request, _ map[string]string) {
+func healthEndpoint(res *router.Response, _ *router.Request) {
 	res.WriteHeader(http.StatusOK)
 	err := router.WriteStatus(res, router.Status{Status: "OK"})
 	if err != nil {

@@ -8,17 +8,19 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
+	"go.uber.org/zap"
 	"museum/config"
 )
 
-func NewSpanExporter(config config.Config) tracesdk.SpanExporter {
+func NewSpanExporter(config config.Config, log *zap.SugaredLogger) tracesdk.SpanExporter {
 	if config.GetJaegerHost() == "" {
+		log.Warn("jaeger host not set, using noop exporter")
 		return &tracetest.NoopExporter{}
 	}
 
 	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint("http://" + config.GetJaegerHost() + "/api/traces")))
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	return exp
 }
