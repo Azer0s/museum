@@ -5,15 +5,15 @@ The fast, easy to use proxy server for your old web applications
 mūsēum (/muːˈseː.um/) is a project from the University of Vienna to provide researchers with a simple way to archive and access old web applications. Often, in the course of a research project, web applications are created to provide a user interface for data collection or analysis or simply to share ones research. These applications are often developed quickly and with little regard for long-term maintenance. As a result, they are often difficult to access and maintain. mūsēum provides a simple way to archive and access these applications.
 
 ## How does it work?
-mūsēum is fully distributed by design. Under the hood, it uses Redis to store information on running applications and Kafka to communicate between different mūsēum instances. Whenever there is a request for a specific application, mūsēum will check if the application is running within the Docker Swarm. If it is, it will forward the request to the application. If it is not, it will start the application, display a loading screen and forward the request to the application once it is ready. 
+mūsēum is fully distributed by design. Under the hood, it uses Redis to store information on running applications and NATS to communicate between different mūsēum instances. Whenever there is a request for a specific application, mūsēum will check if the application is running within the Docker Swarm. If it is, it will forward the request to the application. If it is not, it will start the application, display a loading screen and forward the request to the application once it is ready. 
 
 Every application has to take out a "lease" on the application name. This lease is valid for a certain amount of time. If the application does not renew the lease (this is done every time mūsēum receives a request for the application), it will be removed from the Cluster. This ensures that applications that are not used for a long time will be removed from the Swarm.
 
 ## How do I use it?
 mūsēum is available as a Docker image. You can find the image on Docker Hub. To run mūsēum, you need to provide the following environment variables:
 
-* `KAFKA_BROKERS`: A comma-separated list of Kafka brokers
-* `KAFKA_TOPIC`: The Kafka topic to use (optional, defaults to `museum`)
+* `NATS_HOST`: The address of the NATS instance
+* `NATS_SUBJECT`: The NATS subject to use (optional, defaults to `museum`)
 * `REDIS_HOST`: The address of the Redis instance
 * `REDIS_BASE_KEY`: The base key to use for Redis (optional, defaults to `museum`)
 * `DOCKER_HOST`: The address of the Docker Swarm (optional, defaults to `unix:///var/run/docker.sock`)

@@ -2,8 +2,8 @@ package server
 
 import (
 	"fmt"
+	"github.com/nats-io/nats.go"
 	goredislib "github.com/redis/go-redis/v9"
-	"github.com/segmentio/kafka-go"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
@@ -36,13 +36,14 @@ func Run() {
 	ioc.RegisterSingleton[*goredislib.Client](c, persistence.NewRedisClient)
 	ioc.RegisterSingleton[persistence.SharedPersistentState](c, persistence.NewRedisStateConnector)
 
-	// register kafka consumer group
-	ioc.RegisterSingleton[*kafka.ConsumerGroup](c, persistence.NewKafkaConsumerGroup)
-	ioc.RegisterSingleton[persistence.Consumer](c, persistence.NewKafkaConsumer)
+	// register nats connection
+	ioc.RegisterSingleton[*nats.Conn](c, persistence.NewNatsConn)
 
-	// register kafka producer
-	ioc.RegisterSingleton[*kafka.Writer](c, persistence.NewKafkaWriter)
-	ioc.RegisterSingleton[persistence.Emitter](c, persistence.NewKafkaEmitter)
+	// register nats consumer group
+	ioc.RegisterSingleton[persistence.Consumer](c, persistence.NewNatsConsumer)
+
+	// register nats producer
+	ioc.RegisterSingleton[persistence.Emitter](c, persistence.NewNatsEmitter)
 
 	// register shared state
 	ioc.RegisterSingleton[persistence.SharedPersistentEmittedState](c, persistence.NewSharedPersistentEmittedState)

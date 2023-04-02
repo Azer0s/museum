@@ -3,8 +3,8 @@ package persistence
 import (
 	"github.com/go-redsync/redsync/v4"
 	"github.com/go-redsync/redsync/v4/redis/goredis/v9"
+	"github.com/nats-io/nats.go"
 	goredislib "github.com/redis/go-redis/v9"
-	"github.com/segmentio/kafka-go"
 	"go.uber.org/zap"
 	"museum/config"
 	"museum/persistence/impl"
@@ -12,9 +12,10 @@ import (
 	"time"
 )
 
-func NewKafkaEmitter(producer *kafka.Writer) Emitter {
-	return &impl.KafkaEmitter{
-		Writer: producer,
+func NewNatsEmitter(config config.Config, conn *nats.Conn) Emitter {
+	return &impl.NatsEmitter{
+		Conn:   conn,
+		Config: config,
 	}
 }
 
@@ -27,11 +28,11 @@ func NewRedisStateConnector(config config.Config, redisClient *goredislib.Client
 	return rs
 }
 
-func NewKafkaConsumer(config config.Config, consumerGroup *kafka.ConsumerGroup) Consumer {
-	return &impl.KafkaConsumer{
-		ConsumerGroup: consumerGroup,
-		Brokers:       config.GetKafkaBrokers(),
-		Config:        config,
+func NewNatsConsumer(config config.Config, conn *nats.Conn, log *zap.SugaredLogger) Consumer {
+	return &impl.NatsConsumer{
+		Conn:   conn,
+		Config: config,
+		Log:    log,
 	}
 }
 

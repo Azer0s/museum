@@ -1,8 +1,8 @@
 package config
 
 type Config interface {
-	GetKafkaBrokers() []string
-	GetKafkaTopic() string
+	GetNatsHost() string
+	GetNatsSubject() string
 	GetRedisHost() string
 	GetRedisBaseKey() string
 	GetDockerHost() string

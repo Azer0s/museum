@@ -1,23 +1,23 @@
 package impl
 
 type EnvConfig struct {
-	KafkaBrokers []string `env:"KAFKA_BROKERS,required" envSeparator:","`
-	KafkaTopic   string   `env:"KAFKA_TOPIC" envDefault:"museum"`
-	RedisHost    string   `env:"REDIS_HOST,required"`
-	RedisBaseKey string   `env:"REDIS_BASE_KEY" envDefault:"museum"`
-	DockerHost   string   `env:"DOCKER_HOST" envDefault:"unix:///var/run/docker.sock"`
-	Hostname     string   `env:"HOSTNAME" envDefault:"localhost"`
-	Port         string   `env:"PORT" envDefault:"8080"`
-	JaegerHost   string   `env:"JAEGER_HOST"`
-	Environment  string   `env:"ENVIRONMENT" envDefault:"development"`
+	NatsHost     string `env:"NATS_HOST,required"`
+	NatsSubject  string `env:"NATS_SUBJECT" envDefault:"museum"`
+	RedisHost    string `env:"REDIS_HOST,required"`
+	RedisBaseKey string `env:"REDIS_BASE_KEY" envDefault:"museum"`
+	DockerHost   string `env:"DOCKER_HOST" envDefault:"unix:///var/run/docker.sock"`
+	Hostname     string `env:"HOSTNAME" envDefault:"localhost"`
+	Port         string `env:"PORT" envDefault:"8080"`
+	JaegerHost   string `env:"JAEGER_HOST"`
+	Environment  string `env:"ENVIRONMENT" envDefault:"development"`
 }
 
-func (e EnvConfig) GetKafkaBrokers() []string {
-	return e.KafkaBrokers
+func (e EnvConfig) GetNatsHost() string {
+	return e.NatsHost
 }
 
-func (e EnvConfig) GetKafkaTopic() string {
-	return e.KafkaTopic
+func (e EnvConfig) GetNatsSubject() string {
+	return e.NatsSubject
 }
 
 func (e EnvConfig) GetRedisHost() string {

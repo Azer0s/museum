@@ -2,9 +2,8 @@ package persistence
 
 import (
 	"context"
-	"github.com/google/uuid"
+	"github.com/nats-io/nats.go"
 	goredislib "github.com/redis/go-redis/v9"
-	"github.com/segmentio/kafka-go"
 	"go.uber.org/zap"
 	"museum/config"
 )
@@ -21,35 +20,11 @@ func NewRedisClient(config config.Config, log *zap.SugaredLogger) *goredislib.Cl
 	return redisClient
 }
 
-func NewKafkaWriter(config config.Config) *kafka.Writer {
-	return &kafka.Writer{
-		Addr:  kafka.TCP(config.GetKafkaBrokers()[0]),
-		Topic: config.GetKafkaTopic(),
-	}
-}
-
-func NewKafkaConsumerGroup(config config.Config, log *zap.SugaredLogger) *kafka.ConsumerGroup {
-	client := kafka.Client{
-		Addr: kafka.TCP(config.GetKafkaBrokers()[0]),
-	}
-	_, err := client.CreateTopics(context.Background(), &kafka.CreateTopicsRequest{
-		Topics: []kafka.TopicConfig{
-			{Topic: config.GetKafkaTopic()},
-		},
-	})
+func NewNatsConn(config config.Config, log *zap.SugaredLogger) *nats.Conn {
+	nc, err := nats.Connect(config.GetNatsHost())
 	if err != nil {
-		log.Panic(err)
+		log.Panicw("error connecting to nats", "error", err)
 	}
 
-	group, err := kafka.NewConsumerGroup(kafka.ConsumerGroupConfig{
-		ID:      uuid.New().String(),
-		Brokers: config.GetKafkaBrokers(),
-		Topics:  []string{config.GetKafkaTopic()},
-	})
-
-	if err != nil {
-		log.Panic(err)
-	}
-
-	return group
+	return nc
 }
