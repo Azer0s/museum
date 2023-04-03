@@ -3,7 +3,6 @@ package tool
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"museum/domain"
 	"net/http"
@@ -29,7 +28,6 @@ func (a *ApiClientImpl) CreateExhibit(exhibit *domain.Exhibit) error {
 	}
 
 	b, err = io.ReadAll(res.Body)
-	fmt.Println(string(b))
 
 	return nil
 }

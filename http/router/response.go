@@ -24,3 +24,8 @@ func (r *Response) WriteJson(data any) error {
 
 	return nil
 }
+
+func (r *Response) WriteErr(err error) {
+	r.WriteHeader(http.StatusInternalServerError)
+	_ = r.WriteJson(map[string]string{"status": "Internal Server Error", "error": err.Error()})
+}

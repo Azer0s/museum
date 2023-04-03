@@ -49,6 +49,8 @@ func createExhibit(exhibitService service.ExhibitService, log *zap.SugaredLogger
 
 		body, err := io.ReadAll(req.Body)
 		if err != nil {
+			log.Warnw("error reading request body", "error", err, "requestId", req.RequestID)
+			res.WriteErr(err)
 			return
 		}
 
@@ -56,6 +58,7 @@ func createExhibit(exhibitService service.ExhibitService, log *zap.SugaredLogger
 		err = json.Unmarshal(body, exhibit)
 		if err != nil {
 			log.Warnw("error unmarshalling json", "error", err, "requestId", req.RequestID)
+			res.WriteErr(err)
 			return
 		}
 
@@ -67,13 +70,16 @@ func createExhibit(exhibitService service.ExhibitService, log *zap.SugaredLogger
 		})
 		if err != nil {
 			log.Errorw("error creating exhibit", "error", err, "requestId", req.RequestID)
-			res.WriteHeader(http.StatusInternalServerError)
+			res.WriteErr(err)
+			return
 		}
 
 		res.WriteHeader(http.StatusCreated)
 		err = res.WriteJson(map[string]string{"status": "Created", "id": id})
 		if err != nil {
 			log.Warnw("error writing json", "error", err, "requestId", req.RequestID)
+			res.WriteErr(err)
+			return
 		}
 
 		span.AddEvent("response written")
