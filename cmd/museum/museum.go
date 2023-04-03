@@ -7,7 +7,11 @@ import (
 	"os"
 )
 
-func printUsage() {
+func printUsage(err error) {
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
 	fmt.Println("Usage: museum <command>")
 	fmt.Println("Commands:")
 	fmt.Println("\tserver")
@@ -26,7 +30,7 @@ func printUsage() {
 
 func main() {
 	if len(os.Args) < 2 {
-		printUsage()
+		printUsage(nil)
 		os.Exit(1)
 	}
 
@@ -34,18 +38,20 @@ func main() {
 	case "server":
 		server.Run()
 	case "create":
-		if tool.Create() != nil {
-			printUsage()
+		err := tool.Create()
+		if err != nil {
+			printUsage(err)
 			os.Exit(1)
 		}
 	case "delete":
-		if tool.Delete() != nil {
-			printUsage()
+		err := tool.Delete()
+		if err != nil {
+			printUsage(err)
 			os.Exit(1)
 		}
 	case "list":
 		if tool.List() != nil {
-			printUsage()
+			printUsage(nil)
 			os.Exit(1)
 		}
 	}

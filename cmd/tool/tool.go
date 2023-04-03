@@ -2,6 +2,7 @@ package tool
 
 import (
 	"errors"
+	"fmt"
 	"gopkg.in/yaml.v3"
 	"museum/domain"
 	"museum/ioc"
@@ -42,27 +43,35 @@ func Create() error {
 	}
 
 	a := ioc.Get[ApiClient](c)
-	err = a.CreateExhibit(exhibit)
+	err, id := a.CreateExhibit(exhibit)
 	if err != nil {
-		return err
+		fmt.Println(err.Error())
+		return nil
 	}
+
+	fmt.Println("🧑‍🎨 exhibit " + exhibit.Name + " created successfully")
+	fmt.Println("👉 " + a.GetBaseUrl() + "/exhibits/" + id)
 
 	return nil
 }
 
 func Delete() error {
-	//TODO implement me
-	panic("implement me")
+	c := createToolContainer()
 
-	/*isId := false
-	f, err := os.Open(os.Args[2])
+	if len(os.Args) < 3 {
+		return errors.New("missing id argument")
+	}
+
+	a := ioc.Get[ApiClient](c)
+	err := a.DeleteExhibitById(os.Args[2])
 	if err != nil {
-		if !os.IsNotExist(err) {
-			return err
-		}
+		fmt.Println(err.Error())
+		return nil
+	}
 
-		isId = true
-	}*/
+	fmt.Println("🗑️ exhibit deleted successfully")
+
+	return nil
 }
 
 func List() error {
