@@ -1,13 +1,16 @@
 package impl
 
 import (
+	"context"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/trace"
 	"museum/domain"
 	"museum/persistence"
 )
 
 type ExhibitServiceImpl struct {
-	State persistence.SharedPersistentEmittedState
+	State    persistence.SharedPersistentEmittedState
+	Provider trace.TracerProvider
 }
 
 func (e ExhibitServiceImpl) GetExhibits() []domain.Exhibit {
@@ -18,7 +21,7 @@ func (e ExhibitServiceImpl) GetExhibitById(id string) (*domain.Exhibit, error) {
 	return e.State.GetExhibitById(id)
 }
 
-func (e ExhibitServiceImpl) CreateExhibit(createExhibitRequest domain.CreateExhibit) error {
+func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequest domain.CreateExhibit) (error, string) {
 	// TODO: validate exhibit
 
 	// give exhibit a unique id
@@ -30,5 +33,16 @@ func (e ExhibitServiceImpl) CreateExhibit(createExhibitRequest domain.CreateExhi
 		RelatedContainers: []string{},
 	}
 
-	return e.State.AddExhibit(createExhibitRequest)
+	// create new trace span for event service
+	subCtx, span := e.Provider.
+		Tracer("Orchestrate new exhibit").
+		Start(ctx, "handleCreateExhibit")
+	defer span.End()
+
+	err := e.State.AddExhibit(subCtx, createExhibitRequest)
+	if err != nil {
+		return err, ""
+	}
+
+	return nil, createExhibitRequest.Exhibit.Id
 }

@@ -7,20 +7,26 @@ import (
 	goredislib "github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"museum/config"
+	"museum/observability"
 	"museum/persistence/impl"
 	"sync"
 	"time"
 )
 
-func NewNatsEmitter(config config.Config, conn *nats.Conn) Emitter {
+func NewNatsEmitter(config config.Config, conn *nats.Conn, log *zap.SugaredLogger) Emitter {
 	return &impl.NatsEmitter{
 		Conn:   conn,
 		Config: config,
+		Log:    log,
 	}
 }
 
-func NewRedisStateConnector(config config.Config, redisClient *goredislib.Client) SharedPersistentState {
-	rs := &impl.RedisStateConnector{RedisClient: redisClient, Config: config}
+func NewRedisStateConnector(config config.Config, redisClient *goredislib.Client, providerFactory *observability.TracerProviderFactory) SharedPersistentState {
+	rs := &impl.RedisStateConnector{
+		RedisClient: redisClient,
+		Config:      config,
+		Provider:    providerFactory.Build("redis"),
+	}
 	rs.RedisPool = goredis.NewPool(rs.RedisClient)
 	rs.RedisSync = redsync.New(rs.RedisPool)
 	rs.RedisMu = rs.RedisSync.NewMutex(config.GetRedisBaseKey()+":state:lock", redsync.WithTries(1), redsync.WithExpiry(1*time.Minute))
@@ -36,7 +42,7 @@ func NewNatsConsumer(config config.Config, conn *nats.Conn, log *zap.SugaredLogg
 	}
 }
 
-func NewSharedPersistentEmittedState(state SharedPersistentState, emitter Emitter, consumer Consumer, log *zap.SugaredLogger) SharedPersistentEmittedState {
+func NewSharedPersistentEmittedState(state SharedPersistentState, emitter Emitter, consumer Consumer, log *zap.SugaredLogger, providerFactory *observability.TracerProviderFactory) SharedPersistentEmittedState {
 	sb := &StateBundle{
 		SharedPersistentState: state,
 		Emitter:               emitter,
@@ -44,6 +50,7 @@ func NewSharedPersistentEmittedState(state SharedPersistentState, emitter Emitte
 		ConfirmEvents:         make(map[string]chan struct{}),
 		ConfirmEventsMutex:    &sync.RWMutex{},
 		Log:                   log,
+		Provider:              providerFactory.Build("event-hub"),
 	}
 	events, err := consumer.GetEvents()
 

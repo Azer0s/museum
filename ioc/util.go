@@ -59,7 +59,7 @@ func getCreatorParams(reflectedCreator reflect.Value) []reflect.Type {
 	return creatorParams
 }
 
-func generateFromCreator(c *Container, reflectedCreator reflect.Value) (interface{}, []reflect.Type) {
+func generateFromCreator(c *Container, reflectedCreator reflect.Value) (any, []reflect.Type) {
 	// get list of parameters from creator
 	creatorParams := getCreatorParams(reflectedCreator)
 	arguments := getDependencies(c, creatorParams)
@@ -74,7 +74,7 @@ func generateFromCreator(c *Container, reflectedCreator reflect.Value) (interfac
 	return impl, creatorParams
 }
 
-func getFromType(c *Container, tt reflect.Type) interface{} {
+func getFromType(c *Container, tt reflect.Type) any {
 	c.implMapMu.RLock()
 	defer c.implMapMu.RUnlock()
 
@@ -105,7 +105,7 @@ func getDependencies(c *Container, params []reflect.Type) []reflect.Value {
 	return arguments
 }
 
-func checkForFunc(fn interface{}) {
+func checkForFunc(fn any) {
 	// check that fn is a function
 	if reflect.TypeOf(fn).Kind() != reflect.Func {
 		panic("fn must be a function")
@@ -117,7 +117,7 @@ func checkForFunc(fn interface{}) {
 	}
 }
 
-func forFuncGetArgumentsAndReflectedFn(c *Container, fn interface{}) ([]reflect.Value, reflect.Value) {
+func forFuncGetArgumentsAndReflectedFn(c *Container, fn any) ([]reflect.Value, reflect.Value) {
 	checkForFunc(fn)
 
 	c.implMapMu.RLock()

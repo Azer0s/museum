@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"io"
 	"museum/domain"
@@ -39,9 +40,12 @@ func getExhibitById(exhibitService service.ExhibitService, log *zap.SugaredLogge
 	}
 }
 
-func createExhibit(exhibitService service.ExhibitService, log *zap.SugaredLogger) router.MuxHandlerFunc {
+func createExhibit(exhibitService service.ExhibitService, log *zap.SugaredLogger, provider trace.TracerProvider) router.MuxHandlerFunc {
 	return func(res *router.Response, req *router.Request) {
-		// TODO: create span to trace API call
+		ctx, span := provider.
+			Tracer("API request").
+			Start(req.Context(), "HTTP POST /api/exhibits")
+		defer span.End()
 
 		body, err := io.ReadAll(req.Body)
 		if err != nil {
@@ -55,7 +59,9 @@ func createExhibit(exhibitService service.ExhibitService, log *zap.SugaredLogger
 			return
 		}
 
-		err = exhibitService.CreateExhibit(domain.CreateExhibit{
+		span.AddEvent("request read")
+
+		err, id := exhibitService.CreateExhibit(ctx, domain.CreateExhibit{
 			Exhibit:   *exhibit,
 			RequestID: req.RequestID,
 		})
@@ -65,15 +71,17 @@ func createExhibit(exhibitService service.ExhibitService, log *zap.SugaredLogger
 		}
 
 		res.WriteHeader(http.StatusCreated)
-		err = res.WriteJson(map[string]string{"status": "Created"})
+		err = res.WriteJson(map[string]string{"status": "Created", "id": id})
 		if err != nil {
 			log.Warnw("error writing json", "error", err, "requestId", req.RequestID)
 		}
+
+		span.AddEvent("response written")
 	}
 }
 
-func RegisterRoutes(r *router.Mux, exhibitService service.ExhibitService, log *zap.SugaredLogger) {
+func RegisterRoutes(r *router.Mux, exhibitService service.ExhibitService, log *zap.SugaredLogger, provider trace.TracerProvider) {
 	r.AddRoute(router.Get("/api/exhibits", getExhibits(exhibitService, log)))
 	r.AddRoute(router.Get("/api/exhibits/{id}", getExhibitById(exhibitService, log)))
-	r.AddRoute(router.Post("/api/exhibits", createExhibit(exhibitService, log)))
+	r.AddRoute(router.Post("/api/exhibits", createExhibit(exhibitService, log, provider)))
 }

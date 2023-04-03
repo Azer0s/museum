@@ -14,7 +14,7 @@ const (
 )
 
 type implementationDetails struct {
-	value        interface{}
+	value        any
 	dependencies []reflect.Type
 	kind         dependencyKind
 }
@@ -31,7 +31,7 @@ func NewContainer() *Container {
 	}
 }
 
-func RegisterSingleton[T any](c *Container, creator interface{}) {
+func RegisterSingleton[T any](c *Container, creator any) {
 	var t *T = nil
 	tt := reflect.TypeOf(t)
 	tt = tt.Elem()
@@ -59,7 +59,7 @@ func RegisterSingleton[T any](c *Container, creator interface{}) {
 	}
 }
 
-func RegisterGenerator[T any](c *Container, creator interface{}) {
+func RegisterGenerator[T any](c *Container, creator any) {
 	var t *T = nil
 	tt := reflect.TypeOf(t)
 	tt = tt.Elem()
@@ -131,14 +131,14 @@ func ForStruct[T any](c *Container) *T {
 	return t
 }
 
-func ForFunc(c *Container, fn interface{}) {
+func ForFunc(c *Container, fn any) {
 	arguments, reflectedFn := forFuncGetArgumentsAndReflectedFn(c, fn)
 
 	// call fn with registered parameters
 	reflectedFn.Call(arguments)
 }
 
-func ForFuncAsync(c *Container, fn interface{}) {
+func ForFuncAsync(c *Container, fn any) {
 	arguments, reflectedFn := forFuncGetArgumentsAndReflectedFn(c, fn)
 
 	// call fn with registered parameters in a goroutine

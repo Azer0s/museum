@@ -14,16 +14,18 @@ type NatsConsumer struct {
 }
 
 func (n NatsConsumer) GetEvents() (<-chan cloudevents.Event, error) {
-	eventChan := make(chan cloudevents.Event, 10)
+	eventChan := make(chan cloudevents.Event, 1000)
 
 	go func() {
 		_, err := n.Conn.Subscribe(n.Config.GetNatsSubject(), func(msg *nats.Msg) {
 			var event cloudevents.Event
 			err := event.UnmarshalJSON(msg.Data)
 			if err != nil {
+				n.Log.Warnw("error unmarshalling event", "error", err)
 				return
 			}
 
+			n.Log.Debugw("received event", "eventID", event.ID(), "eventType", event.Type())
 			eventChan <- event
 		})
 
@@ -31,6 +33,8 @@ func (n NatsConsumer) GetEvents() (<-chan cloudevents.Event, error) {
 			n.Log.Panicw("error subscribing to nats topic", "error", err)
 		}
 	}()
+
+	n.Log.Debugw("subscribed to subject", "subject", n.Config.GetNatsSubject())
 
 	return eventChan, nil
 }

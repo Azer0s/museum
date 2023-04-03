@@ -3,6 +3,8 @@ package tool
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"museum/domain"
 	"net/http"
 )
@@ -21,10 +23,13 @@ func (a *ApiClientImpl) CreateExhibit(exhibit *domain.Exhibit) error {
 		return err
 	}
 
-	_, err = http.Post(a.BaseUrl+"/api/exhibits", "application/json", bytes.NewBuffer(b))
+	res, err := http.Post(a.BaseUrl+"/api/exhibits", "application/json", bytes.NewBuffer(b))
 	if err != nil {
 		return err
 	}
+
+	b, err = io.ReadAll(res.Body)
+	fmt.Println(string(b))
 
 	return nil
 }

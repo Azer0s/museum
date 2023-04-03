@@ -17,6 +17,8 @@ func NewRedisClient(config config.Config, log *zap.SugaredLogger) *goredislib.Cl
 		log.Panic(err)
 	}
 
+	log.Debugw("connected to redis", "host", config.GetRedisHost())
+
 	return redisClient
 }
 
@@ -25,6 +27,8 @@ func NewNatsConn(config config.Config, log *zap.SugaredLogger) *nats.Conn {
 	if err != nil {
 		log.Panicw("error connecting to nats", "error", err)
 	}
+
+	log.Debugw("connected to nats", "host", config.GetNatsHost())
 
 	return nc
 }

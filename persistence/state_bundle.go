@@ -1,7 +1,9 @@
 package persistence
 
 import (
+	"context"
 	"errors"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"museum/domain"
 	"sync"
@@ -16,6 +18,7 @@ type StateBundle struct {
 	ConfirmEvents         map[string]chan struct{}
 	ConfirmEventsMutex    *sync.RWMutex
 	Log                   *zap.SugaredLogger
+	Provider              trace.TracerProvider
 }
 
 func (s StateBundle) GetExhibitById(id string) (*domain.Exhibit, error) {
@@ -46,16 +49,34 @@ func (s StateBundle) GetExhibits() []domain.Exhibit {
 	return s.CurrentState
 }
 
-func (s StateBundle) AddExhibit(app domain.CreateExhibit) error {
+func (s StateBundle) AddExhibit(ctx context.Context, app domain.CreateExhibit) error {
 	s.CurrentStateMutex.Lock()
 	defer s.CurrentStateMutex.Unlock()
 
+	span := trace.SpanFromContext(ctx)
+
 	return s.SharedPersistentState.WithLock(func() error {
+		span.AddEvent("lock acquired")
+
+		// create span for event emission
+		eventCtx, eventSpan := s.Provider.
+			Tracer("Event emission").
+			Start(ctx, "emitCreateEvent")
+
+		spanEnded := false
+		defer func() {
+			if !spanEnded {
+				eventSpan.End()
+			}
+		}()
+
 		createEvent, err := domain.NewCreateEvent(app.Exhibit)
 		if err != nil {
 			s.Log.Debugw("failed to create event", "error", err, "requestId", app.RequestID)
 			return err
 		}
+
+		eventSpan.AddEvent("event created")
 
 		received, err := s.EventReceived(createEvent.ID())
 		if err != nil {
@@ -69,9 +90,13 @@ func (s StateBundle) AddExhibit(app domain.CreateExhibit) error {
 			return err
 		}
 
+		eventSpan.AddEvent("event emitted")
+
 		<-received
 
-		err = s.SharedPersistentState.AddExhibit(app.Exhibit)
+		eventSpan.AddEvent("event pinged")
+
+		err = s.SharedPersistentState.AddExhibit(eventCtx, app.Exhibit)
 		if err != nil {
 			s.Log.Debugw("failed to add exhibit to persistent state", "error", err, "requestId", app.RequestID)
 			return err

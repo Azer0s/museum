@@ -22,7 +22,7 @@ type Driver struct {
 
 type StringMap map[string]string
 
-func (e *StringMap) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (e *StringMap) UnmarshalYAML(unmarshal func(any) error) error {
 	var env map[string]string
 	if err := unmarshal(&env); err != nil {
 		return err

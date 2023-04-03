@@ -7,6 +7,7 @@ import (
 	"github.com/go-redsync/redsync/v4"
 	"github.com/go-redsync/redsync/v4/redis"
 	goredislib "github.com/redis/go-redis/v9"
+	"go.opentelemetry.io/otel/trace"
 	"museum/config"
 	"museum/domain"
 )
@@ -17,6 +18,7 @@ type RedisStateConnector struct {
 	RedisSync   *redsync.Redsync
 	RedisMu     *redsync.Mutex
 	Config      config.Config
+	Provider    trace.TracerProvider
 }
 
 func (rs *RedisStateConnector) WithLock(f func() error) (err error) {
@@ -68,22 +70,32 @@ func (rs *RedisStateConnector) DeleteExhibitById(id string) error {
 	panic("implement me")
 }
 
-func (rs *RedisStateConnector) AddExhibit(app domain.Exhibit) error {
+func (rs *RedisStateConnector) AddExhibit(ctx context.Context, app domain.Exhibit) error {
+	// create new trace span for event service
+	subCtx, span := rs.Provider.
+		Tracer("Redis persistence").
+		Start(ctx, "addExhibit")
+	defer span.End()
+
 	// check if app already exists, if so, return error
-	res := rs.RedisClient.Get(context.Background(), rs.Config.GetRedisBaseKey()+":exhibit:"+app.Id)
+	res := rs.RedisClient.Get(subCtx, rs.Config.GetRedisBaseKey()+":exhibit:"+app.Id)
 	if res.Err() == nil {
 		return errors.New("exhibit already exists")
 	}
+
+	span.AddEvent("checked if exhibit already exists")
 
 	b, err := json.Marshal(app)
 	if err != nil {
 		return err
 	}
 
-	set := rs.RedisClient.Set(context.Background(), rs.Config.GetRedisBaseKey()+":exhibit:"+app.Id, b, 0)
+	set := rs.RedisClient.Set(subCtx, rs.Config.GetRedisBaseKey()+":exhibit:"+app.Id, b, 0)
 	if set.Err() != nil {
 		return set.Err()
 	}
+
+	span.AddEvent("added exhibit to redis")
 
 	return nil
 }

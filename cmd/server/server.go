@@ -30,7 +30,8 @@ func Run() {
 
 	// register jaeger
 	ioc.RegisterSingleton[tracesdk.SpanExporter](c, observability.NewSpanExporter)
-	ioc.RegisterSingleton[trace.TracerProvider](c, observability.NewTracerProvider)
+	ioc.RegisterSingleton[*observability.TracerProviderFactory](c, observability.NewTracerProviderFactory)
+	ioc.RegisterSingleton[trace.TracerProvider](c, observability.NewDefaultTracerProvider)
 
 	// register redis
 	ioc.RegisterSingleton[*goredislib.Client](c, persistence.NewRedisClient)
