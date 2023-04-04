@@ -23,7 +23,7 @@ func checkCreatorFunc(tt reflect.Type, reflectedCreator reflect.Value) {
 	//RegisterSingleton[*domain.ExhibitImpl](func () *domain.Exhibit -> Invalid
 	//RegisterSingleton[*domain.ExhibitImpl](func () domain.Exhibit -> Invalid
 
-	// type paramater has to be an interface or a pointer to a struct
+	// type parameter has to be an interface or a pointer to a struct
 	if !(tt.Kind() == reflect.Interface) &&
 		!(tt.Kind() == reflect.Ptr && tt.Elem().Kind() == reflect.Struct) {
 		panic("T must be either an interface or a pointer to a struct")
@@ -47,6 +47,13 @@ func checkCreatorFunc(tt reflect.Type, reflectedCreator reflect.Value) {
 		tt != reflectedCreator.Type().Out(0) {
 		panic("T must be equal to the type of the returned value or the returned value must implement T")
 	}
+}
+
+func addDebugDependencies(c *Container, i implementationDetails, dependencies []reflect.Type) implementationDetails {
+	if c.Debug {
+		i.dependencies = dependencies
+	}
+	return i
 }
 
 func getCreatorParams(reflectedCreator reflect.Value) []reflect.Type {
@@ -126,6 +133,13 @@ func forFuncGetArgumentsAndReflectedFn(c *Container, fn any) ([]reflect.Value, r
 	reflectedFn := reflect.ValueOf(fn)
 	params := getCreatorParams(reflectedFn)
 	arguments := getDependencies(c, params)
+
+	if c.Debug {
+		c.funcDependenciesMu.Lock()
+		defer c.funcDependenciesMu.Unlock()
+
+		c.funcDependencies = append(c.funcDependencies, params)
+	}
 
 	return arguments, reflectedFn
 }

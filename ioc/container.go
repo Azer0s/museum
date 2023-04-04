@@ -1,7 +1,9 @@
 package ioc
 
 import (
+	"github.com/google/uuid"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -20,15 +22,25 @@ type implementationDetails struct {
 }
 
 type Container struct {
-	implMap   map[string]implementationDetails
-	implMapMu sync.RWMutex
+	implMap            map[string]implementationDetails
+	implMapMu          sync.RWMutex
+	funcDependencies   [][]reflect.Type
+	funcDependenciesMu sync.RWMutex
+	Debug              bool
 }
 
 func NewContainer() *Container {
-	return &Container{
-		implMap:   make(map[string]implementationDetails),
-		implMapMu: sync.RWMutex{},
+	c := &Container{
+		implMap:            make(map[string]implementationDetails),
+		implMapMu:          sync.RWMutex{},
+		funcDependencies:   make([][]reflect.Type, 0),
+		funcDependenciesMu: sync.RWMutex{},
+		Debug:              true,
 	}
+	RegisterSingleton[*Container](c, func() *Container {
+		return c
+	})
+	return c
 }
 
 func RegisterSingleton[T any](c *Container, creator any) {
@@ -43,19 +55,17 @@ func RegisterSingleton[T any](c *Container, creator any) {
 	checkCreatorFunc(tt, reflectedCreator)
 	impl, creatorParams := generateFromCreator(c, reflectedCreator)
 
-	c.implMap[tt.String()] = implementationDetails{
-		value:        impl,
-		dependencies: creatorParams,
-		kind:         singleton,
-	}
+	c.implMap[tt.String()] = addDebugDependencies(c, implementationDetails{
+		value: impl,
+		kind:  singleton,
+	}, creatorParams)
 
 	// if tt is an interface and value, register value as a pointer to a struct
 	if tt.Kind() == reflect.Interface {
-		c.implMap[reflect.TypeOf(impl).String()] = implementationDetails{
-			value:        impl,
-			dependencies: creatorParams,
-			kind:         singleton,
-		}
+		c.implMap[reflect.TypeOf(impl).String()] = addDebugDependencies(c, implementationDetails{
+			value: impl,
+			kind:  singleton,
+		}, creatorParams)
 	}
 }
 
@@ -72,11 +82,10 @@ func RegisterGenerator[T any](c *Container, creator any) {
 	checkCreatorFunc(tt, reflectedCreator)
 	creatorParams := getCreatorParams(reflectedCreator)
 
-	c.implMap[tt.String()] = implementationDetails{
-		value:        creator,
-		dependencies: creatorParams,
-		kind:         generator,
-	}
+	c.implMap[tt.String()] = addDebugDependencies(c, implementationDetails{
+		value: creator,
+		kind:  generator,
+	}, creatorParams)
 }
 
 func Get[T any](c *Container) T {
@@ -146,8 +155,15 @@ func ForFuncAsync(c *Container, fn any) {
 }
 
 func GenerateDependencyGraph(c *Container) string {
+	if !c.Debug {
+		panic("cannot generate dependency graph when debug is disabled")
+	}
+
 	c.implMapMu.RLock()
 	defer c.implMapMu.RUnlock()
+
+	c.funcDependenciesMu.RLock()
+	defer c.funcDependenciesMu.RUnlock()
 
 	graph := make([]string, 0)
 	graph = append(graph, "digraph G {")
@@ -172,6 +188,26 @@ func GenerateDependencyGraph(c *Container) string {
 	for k, impl := range c.implMap {
 		if reflect.TypeOf(impl.value).Kind() == reflect.Ptr && k != reflect.TypeOf(impl.value).String() {
 			graph = append(graph, "\t\""+k+"\" -> \""+reflect.TypeOf(impl.value).String()+"\" [style=dashed];")
+		}
+	}
+
+	// connect anonymous functions to their dependencies
+	for i, deps := range c.funcDependencies {
+		funcId := uuid.New().String()
+		graph = append(graph, "\t\""+funcId+"\" [label=\"func()/"+strconv.Itoa(i)+"\"];")
+		for _, dep := range deps {
+			if _, ok := seenTypes[dep.String()]; !ok {
+				seenTypes[dep.String()] = true
+			}
+
+			graph = append(graph, "\t\""+funcId+"\" -> \""+dep.String()+"\";")
+		}
+	}
+
+	// add struct pointer nodes that aren't used
+	for _, impl := range c.implMap {
+		if _, ok := seenTypes[reflect.TypeOf(impl.value).String()]; !ok {
+			graph = append(graph, "\t\""+reflect.TypeOf(impl.value).String()+"\";")
 		}
 	}
 

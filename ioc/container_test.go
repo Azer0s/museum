@@ -105,6 +105,10 @@ func TestGenerateDependencyGraph(t *testing.T) {
 	RegisterSingleton[Buzzable](c, NewBuzz)
 	RegisterSingleton[Burrable](c, NewBurr)
 
+	ForFunc(c, func(burr Burrable) {
+		burr.DoBurr()
+	})
+
 	depGraph := GenerateDependencyGraph(c)
 	fmt.Println(depGraph)
 }
@@ -471,4 +475,20 @@ func TestForFuncAsync(t *testing.T) {
 	fmt.Println("waiting for done")
 
 	<-doneChan
+}
+
+func TestDependencyGraphWithoutDebug(t *testing.T) {
+	c := NewContainer()
+	c.Debug = false
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic")
+		}
+	}()
+
+	RegisterSingleton[*Foo](c, NewFoo)
+	RegisterSingleton[*Bar](c, NewBar)
+
+	GenerateDependencyGraph(c)
 }
