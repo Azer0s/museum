@@ -1,4 +1,4 @@
-# mūsēum
+# mūsēum 🏛
 The fast, easy to use proxy server for your old web applications
 
 ## What is mūsēum?
