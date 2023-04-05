@@ -1,20 +1,15 @@
 package service
 
 import (
-	"context"
 	"go.opentelemetry.io/otel/trace"
-	"museum/domain"
 	"museum/persistence"
 	"museum/service/impl"
+	service "museum/service/interface"
 )
 
-type ExhibitService interface {
-	GetExhibits() []domain.Exhibit
-	GetExhibitById(id string) (*domain.Exhibit, error)
-	CreateExhibit(ctx context.Context, createExhibit domain.CreateExhibit) (error, string)
-}
+type ExhibitService service.ExhibitService
 
-func NewExhibitServiceImpl(state persistence.SharedPersistentEmittedState, provider trace.TracerProvider) *impl.ExhibitServiceImpl {
+func NewExhibitServiceImpl(state persistence.SharedPersistentEmittedState, provider trace.TracerProvider) ExhibitService {
 	return &impl.ExhibitServiceImpl{
 		State:    state,
 		Provider: provider,
