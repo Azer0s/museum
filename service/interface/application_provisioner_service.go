@@ -1,7 +1,9 @@
 package service
 
+import "context"
+
 type ApplicationProvisionerService interface {
-	StartApplication(exhibitId string) error
-	StopApplication(exhibitId string) error
-	CleanupApplication(exhibitId string) error
+	StartApplication(ctx context.Context, exhibitId string) error
+	StopApplication(ctx context.Context, exhibitId string) error
+	CleanupApplication(ctx context.Context, exhibitId string) error
 }
