@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	docker "github.com/docker/docker/client"
 	"github.com/nats-io/nats.go"
 	goredislib "github.com/redis/go-redis/v9"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
@@ -28,6 +29,9 @@ func Run() {
 	// register config
 	ioc.RegisterSingleton[config.Config](c, config.NewEnvConfig)
 
+	// register docker
+	ioc.RegisterSingleton[*docker.Client](c, service.NewDockerClient)
+
 	// register jaeger
 	ioc.RegisterSingleton[tracesdk.SpanExporter](c, observability.NewSpanExporter)
 	ioc.RegisterSingleton[*observability.TracerProviderFactory](c, observability.NewTracerProviderFactory)
@@ -51,6 +55,8 @@ func Run() {
 
 	// register services
 	ioc.RegisterSingleton[service.ExhibitService](c, service.NewExhibitServiceImpl)
+	ioc.RegisterSingleton[service.ApplicationProvisionerService](c, service.NewDockerApplicationProvisionerService)
+	ioc.RegisterSingleton[service.ApplicationResolverService](c, service.NewDockerHostApplicationResolverService)
 
 	// register router and routes
 	ioc.RegisterSingleton[*router.Mux](c, router.NewMux)

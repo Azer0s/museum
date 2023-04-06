@@ -20,7 +20,7 @@ func NewSpanExporter(config config.Config, log *zap.SugaredLogger) tracesdk.Span
 
 	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint("http://" + config.GetJaegerHost() + "/api/traces")))
 	if err != nil {
-		log.Panic(err)
+		log.Panicw("failed to create jaeger exporter", "error", err)
 	}
 	return exp
 }

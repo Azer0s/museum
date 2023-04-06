@@ -85,7 +85,7 @@ func NewSharedPersistentEmittedState(state SharedPersistentState, emitter Emitte
 	})
 
 	if err != nil {
-		log.Panic(err)
+		log.Panicw("failed to initialize shared state", "error", err)
 	}
 
 	return sb

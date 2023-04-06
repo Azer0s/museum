@@ -14,7 +14,7 @@ func NewRedisClient(config config.Config, log *zap.SugaredLogger) *goredislib.Cl
 	})
 
 	if _, err := redisClient.Ping(context.Background()).Result(); err != nil {
-		log.Panic(err)
+		log.Panicw("error connecting to redis", "error", err)
 	}
 
 	log.Debugw("connected to redis", "host", config.GetRedisHost())

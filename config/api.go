@@ -10,7 +10,7 @@ func NewEnvConfig(log *zap.SugaredLogger) *impl.EnvConfig {
 	cfg := &impl.EnvConfig{}
 	err := env.Parse(cfg)
 	if err != nil {
-		log.Panic(err)
+		log.Panicw("failed to parse config", "error", err)
 	}
 	log.Debugw("config loaded", "config", cfg)
 	return cfg
