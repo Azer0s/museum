@@ -1,8 +1,6 @@
 package tool
 
 import (
-	"errors"
-	"fmt"
 	"gopkg.in/yaml.v3"
 	"museum/domain"
 	"museum/ioc"
@@ -19,62 +17,54 @@ func createToolContainer() *ioc.Container {
 	return c
 }
 
-func Create() error {
+func Create(filePath string) (error, *domain.Exhibit, string) {
 	c := createToolContainer()
 
-	if len(os.Args) < 3 {
-		return errors.New("missing file argument")
-	}
-
-	_, err := os.Open(os.Args[2])
+	_, err := os.Open(filePath)
 	if err != nil {
-		return err
+		return err, nil, ""
 	}
-	content, err := os.ReadFile(os.Args[2])
+	content, err := os.ReadFile(filePath)
 	if err != nil {
-		return err
+		return err, nil, ""
 	}
 
 	exhibit := &domain.Exhibit{}
 	err = yaml.Unmarshal(content, exhibit)
 
 	if err != nil {
-		return err
+		return err, nil, ""
 	}
 
 	a := ioc.Get[ApiClient](c)
 	err, id := a.CreateExhibit(exhibit)
 	if err != nil {
-		fmt.Println(err.Error())
-		return nil
+		return err, nil, ""
 	}
 
-	fmt.Println("🧑‍🎨 exhibit " + exhibit.Name + " created successfully")
-	fmt.Println("👉 " + a.GetBaseUrl() + "/exhibits/" + id)
+	exhibit.Id = id
 
-	return nil
+	return nil, exhibit, a.GetBaseUrl() + "/exhibits/" + id
 }
 
-func Delete() error {
+func Delete(id string) error {
 	c := createToolContainer()
 
-	if len(os.Args) < 3 {
-		return errors.New("missing id argument")
-	}
-
 	a := ioc.Get[ApiClient](c)
-	err := a.DeleteExhibitById(os.Args[2])
+	err := a.DeleteExhibitById(id)
 	if err != nil {
-		fmt.Println(err.Error())
-		return nil
+		return err
 	}
-
-	fmt.Println("🗑️ exhibit deleted successfully")
 
 	return nil
 }
 
-func List() error {
+func List() (error, []domain.Exhibit) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func Warmup(id string) error {
 	//TODO implement me
 	panic("implement me")
 }

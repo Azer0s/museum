@@ -7,11 +7,7 @@ import (
 	"os"
 )
 
-func printUsage(err error) {
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-
+func printUsage() {
 	fmt.Println("Usage: museum <command>")
 	fmt.Println("Commands:")
 	fmt.Println("\tserver")
@@ -30,7 +26,7 @@ func printUsage(err error) {
 
 func main() {
 	if len(os.Args) < 2 {
-		printUsage(nil)
+		printUsage()
 		os.Exit(1)
 	}
 
@@ -38,21 +34,45 @@ func main() {
 	case "server":
 		server.Run()
 	case "create":
-		err := tool.Create()
-		if err != nil {
-			printUsage(err)
+		if len(os.Args) < 3 {
+			fmt.Println("❌ missing file argument")
 			os.Exit(1)
 		}
+		err, exhibit, url := tool.Create(os.Args[2])
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+		fmt.Println("🧑‍🎨 exhibit " + exhibit.Name + " created successfully")
+		fmt.Println("👉 " + url)
 	case "delete":
-		err := tool.Delete()
+		if len(os.Args) < 3 {
+			fmt.Println("❌ missing id argument")
+			os.Exit(1)
+		}
+		err := tool.Delete(os.Args[2])
 		if err != nil {
-			printUsage(err)
+			fmt.Println(err.Error())
 			os.Exit(1)
 		}
+		fmt.Println("🗑️ exhibit deleted successfully")
 	case "list":
-		if tool.List() != nil {
-			printUsage(nil)
+		err, _ := tool.List()
+		if err != nil {
+			fmt.Println(err.Error())
 			os.Exit(1)
 		}
+	case "warmup":
+		if len(os.Args) < 3 {
+			fmt.Println("❌ missing id argument")
+			os.Exit(1)
+		}
+		err := tool.Warmup(os.Args[2])
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+	default:
+		printUsage()
 	}
 }
