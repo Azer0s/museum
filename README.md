@@ -26,6 +26,8 @@ The proxy comes with a command line utility to manage applications. You can use 
 
 As of right now, the proxy only supports Docker Swarm. We are working on adding support for Kubernetes.
 
+### Docker Swarm compose file
+
 ```yaml
 version: '3.7'
 services:
@@ -35,6 +37,8 @@ services:
       NATS_HOST: nats
       REDIS_HOST: redis
       DOCKER_HOST: unix:///var/run/docker.sock
+      PROXY_MODE: swarm
+      # PROXY_MODE: dind # if you want to use Docker in Docker
       HOSTNAME: museum
       PORT: 8080
     volumes:
@@ -48,6 +52,43 @@ services:
     image: nats:2.1.9
   redis:
     image: redis:6.0.5
+```
+
+### Kubernetes manifest (WIP ⚠️)
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: museum
+  labels:
+    app: museum
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+        app: museum
+    template:
+        metadata:
+        labels:
+            app: museum
+        spec:
+        containers:
+          - image: museum:latest
+            name: museum
+            env:
+                - NATS_HOST: nats
+                - REDIS_HOST: redis
+                - PROXY_MODE: kubernetes
+                - KUBERNETES_API_URL: https://kubernetes.default.svc.cluster.local
+                - KUBECONFIG: /root/.kube/config
+                - HOSTNAME: museum
+            ports:
+                - containerPort: 8080
+            volumeMounts:
+              - name: kubeconfig
+                mountPath: /root/.kube/config
+                readOnly: true
 ```
 
 ## Exhibits
