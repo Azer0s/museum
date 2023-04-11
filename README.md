@@ -20,9 +20,37 @@ mūsēum is available as a Docker image. You can find the image on Docker Hub. T
 * `HOSTNAME`: The hostname of the mūsēum instance (optional, defaults to `localhost`)
 * `PORT`: The port to listen on (optional, defaults to `8080`)
 * `JAEGER_HOST`: The address of the Jaeger instance (optional)
-* `ENVIRONMENT`: The environment mūsēum is running in (optional)
+* `ENVIRONMENT`: The environment mūsēum is running in (optional, defaults to `development`)
 
-The proxy comes with a command line utility to manage applications. You can use it to start, stop and remove applications. You can also use it to list all running applications.
+The proxy comes with a command line utility to manage applications. You can use it to start, stop and remove applications, etc.
+
+As of right now, the proxy only supports Docker Swarm. We are working on adding support for Kubernetes.
+
+```yaml
+version: '3.7'
+services:
+  museum:
+    image: museum:latest
+    environment:
+      NATS_HOST: nats
+      REDIS_HOST: redis
+      DOCKER_HOST: unix:///var/run/docker.sock
+      HOSTNAME: museum
+      PORT: 8080
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8080:8080"
+    depends_on:
+      - nats
+      - redis
+  nats:
+    image: nats:2.1.9
+  redis:
+    image: redis:6.0.5
+```
+
+## Exhibits
 
 Applications are configured with so-called "exhibit" files. These files are simple YAML files that contain information on how to start the application.
 
@@ -68,6 +96,12 @@ order:
 
 You would then start the application with `museum create my-exhibit.yml`. This will start the application and make it available at a random path (a UUID) on the proxy. You can then access the application at `http://<proxy-host>:<proxy-port>/exhibits/<path>`. You can also specify a path for the application with the `--path` flag (this is not recommended as we want to avoid path collisions).
 
+```bash
+$ museum create my-exhibit.yml
+🏛 exhibit created successfully
+👉 http://localhost:8080/exhibits/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
+```
+
 ## Accessing the applications
 
 To access the applications, you need to know the path of the application. You can get this path by running `museum list`. 
@@ -75,40 +109,34 @@ To access the applications, you need to know the path of the application. You ca
 ```bash
 $ museum list
 > my-research-project
-    🚗 Path: http://localhost:8080/exhibits/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
-    ⏲ Expires: 23 minutes and 59 seconds from now
-    🔒 HTTPS: false 🔴
+    👉 http://localhost:8080/exhibits/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
+    ⏲ Expires in 23 minutes and 59 seconds from now
     📦 exhibits:
         📦 my-database (postgres:9.6)
         📦 my-webapp (my-research-project:latest)
 > my-other-project
-    🚗 Path: http://localhost:8080/exhibits/3b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
-    ⏲ Expires: 1 hour, 11 minutes and 16 seconds from now
-    🔒 HTTPS: true 🟢
+    👉 http://localhost:8080/exhibits/3b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
+    ⏲ Expires in 1 hour, 11 minutes and 16 seconds from now
     📦 exhibits:
         📦 my-perl-app (perl:5.30)
+```
+
+### Deleting an application
+```bash
+$ museum delete my-research-project
+🗑 exhibit deleted successfully
 ```
 
 ### Renewing the lease manually
 ```bash
 $ museum renew my-research-project 2h
-> my-research-project
-    🚗 Path: http://localhost:8080/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
-    ⏲ Expires: 2 hours, 0 minutes and 0 seconds from now
-    🔒 HTTPS: false 🔴
-    📦 exhibits:
-        📦 my-database (postgres:9.6)
-        📦 my-webapp (my-research-project:latest)
+⏲ exhibit lease renewed successfully
+👉 http://localhost:8080/exhibits/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
 ```
 
 ### Starting an application manually (hot start)
 ```bash
 $ museum warmup my-research-project
-> my-research-project
-    🚗 Path: http://localhost:8080/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
-    ⏲ Expires: 2 hours, 0 minutes and 0 seconds from now
-    🔒 HTTPS: false 🔴
-    📦 exhibits:
-        📦 my-database (postgres:9.6)
-        📦 my-webapp (my-research-project:latest)
+🔥 exhibit warmed up successfully
+👉 http://localhost:8080/exhibits/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
 ```
