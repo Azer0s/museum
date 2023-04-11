@@ -57,6 +57,7 @@ func Run() {
 	ioc.RegisterSingleton[service.ExhibitService](c, service.NewExhibitServiceImpl)
 	ioc.RegisterSingleton[service.ApplicationProvisionerService](c, service.NewDockerApplicationProvisionerService)
 	ioc.RegisterSingleton[service.ApplicationResolverService](c, service.NewDockerHostApplicationResolverService)
+	ioc.RegisterSingleton[service.ApplicationProvisionerHandlerService](c, service.NewApplicationProvisionerHandlerService)
 
 	// register router and routes
 	ioc.RegisterSingleton[*router.Mux](c, router.NewMux)

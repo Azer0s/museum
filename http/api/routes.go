@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	cloudevents "github.com/cloudevents/sdk-go/v2/event"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
@@ -97,47 +98,38 @@ func createExhibit(exhibitService service.ExhibitService, log *zap.SugaredLogger
 	}
 }
 
-type Event struct {
-	ExhibitId string `json:"exhibitId"`
-	EventType string `json:"eventType"`
-}
-
-func handleEvents(exhibitService service.ExhibitService, provisionerService service.ApplicationProvisionerService, log *zap.SugaredLogger, provider trace.TracerProvider) router.MuxHandlerFunc {
+func handleEvents(handlerService service.ApplicationProvisionerHandlerService, log *zap.SugaredLogger, provider trace.TracerProvider) router.MuxHandlerFunc {
 	return func(res *router.Response, req *router.Request) {
 		ctx, span := provider.
 			Tracer("API request").
 			Start(req.Context(), "HTTP POST /api/events", trace.WithAttributes(attribute.String("requestId", req.RequestID)))
 		defer span.End()
 
-		body, err := io.ReadAll(req.Body)
-		if err != nil {
-			log.Warnw("error reading request body", "error", err, "requestId", req.RequestID)
-			res.WriteErr(err)
-			return
-		}
+		event := &cloudevents.Event{}
+		err := cloudevents.ReadJson(event, req.Body)
 
-		event := &Event{}
-		err = json.Unmarshal(body, event)
 		if err != nil {
-			log.Warnw("error unmarshalling json", "error", err, "requestId", req.RequestID)
+			log.Warnw("error reading or parsing request body", "error", err, "requestId", req.RequestID)
 			res.WriteErr(err)
 			return
 		}
 
 		span.AddEvent("request read")
 
-		//TODO: move this to a service, controller should only be responsible for handling the request
-		err = provisionerService.StartApplication(ctx, event.ExhibitId)
+		exhibit := &domain.Exhibit{}
+		err = json.Unmarshal(event.Data(), exhibit)
 		if err != nil {
-			log.Errorw("error starting application", "error", err, "requestId", req.RequestID)
+			log.Warnw("error unmarshalling cloudevent data", "error", err, "requestId", req.RequestID)
 			res.WriteErr(err)
 			return
 		}
 
+		err = handlerService.HandleEvent(ctx, event, exhibit.Id)
+
 		span.AddEvent("application started")
 
 		res.WriteHeader(http.StatusCreated)
-		err = res.WriteJson(map[string]string{"status": "Created"})
+		err = res.WriteJson(map[string]string{"status": "Started"})
 		if err != nil {
 			log.Warnw("error writing json", "error", err, "requestId", req.RequestID)
 			res.WriteErr(err)
@@ -148,9 +140,9 @@ func handleEvents(exhibitService service.ExhibitService, provisionerService serv
 	}
 }
 
-func RegisterRoutes(r *router.Mux, exhibitService service.ExhibitService, provisionerService service.ApplicationProvisionerService, log *zap.SugaredLogger, provider trace.TracerProvider) {
+func RegisterRoutes(r *router.Mux, exhibitService service.ExhibitService, provisionerHandlerService service.ApplicationProvisionerHandlerService, log *zap.SugaredLogger, provider trace.TracerProvider) {
 	r.AddRoute(router.Get("/api/exhibits", getExhibits(exhibitService, log, provider)))
 	r.AddRoute(router.Get("/api/exhibits/{id}", getExhibitById(exhibitService, log, provider)))
 	r.AddRoute(router.Post("/api/exhibits", createExhibit(exhibitService, log, provider)))
-	r.AddRoute(router.Post("/api/events", handleEvents(exhibitService, provisionerService, log, provider)))
+	r.AddRoute(router.Post("/api/events", handleEvents(provisionerHandlerService, log, provider)))
 }

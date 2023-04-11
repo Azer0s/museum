@@ -17,34 +17,34 @@ func createToolContainer() *ioc.Container {
 	return c
 }
 
-func Create(filePath string) (error, *domain.Exhibit, string) {
+func Create(filePath string) (*domain.Exhibit, string, error) {
 	c := createToolContainer()
 
 	_, err := os.Open(filePath)
 	if err != nil {
-		return err, nil, ""
+		return nil, "", err
 	}
 	content, err := os.ReadFile(filePath)
 	if err != nil {
-		return err, nil, ""
+		return nil, "", err
 	}
 
 	exhibit := &domain.Exhibit{}
 	err = yaml.Unmarshal(content, exhibit)
 
 	if err != nil {
-		return err, nil, ""
+		return nil, "", err
 	}
 
 	a := ioc.Get[ApiClient](c)
-	err, id := a.CreateExhibit(exhibit)
+	id, err := a.CreateExhibit(exhibit)
 	if err != nil {
-		return err, nil, ""
+		return nil, "", err
 	}
 
 	exhibit.Id = id
 
-	return nil, exhibit, a.GetBaseUrl() + "/exhibits/" + id
+	return exhibit, a.GetBaseUrl() + "/exhibits/" + id, nil
 }
 
 func Delete(id string) error {
@@ -59,12 +59,29 @@ func Delete(id string) error {
 	return nil
 }
 
-func List() (error, []domain.Exhibit) {
-	//TODO implement me
-	panic("implement me")
+func Warmup(id string) (string, error) {
+	c := createToolContainer()
+
+	a := ioc.Get[ApiClient](c)
+	exhibit, err := a.GetExhibitById(id)
+	if err != nil {
+		return "", err
+	}
+
+	event, err := domain.NewStartEvent(*exhibit)
+	if err != nil {
+		return "", err
+	}
+
+	err = a.CreateEvent(&event)
+	if err != nil {
+		return "", err
+	}
+
+	return a.GetBaseUrl() + "/exhibits/" + id, nil
 }
 
-func Warmup(id string) error {
+func List() ([]domain.Exhibit, error) {
 	//TODO implement me
 	panic("implement me")
 }

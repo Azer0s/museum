@@ -5,6 +5,9 @@ import (
 	"museum/domain"
 )
 
+// SharedPersistentState handles persisting state to disk
+// it does not care about the state an application is in, it is just responsible for
+// communication between museum instances. No business logic shall be contained here.
 type SharedPersistentState interface {
 	WithLock(f func() error) (err error)
 	GetExhibits() ([]domain.Exhibit, error)

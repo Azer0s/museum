@@ -10,6 +10,8 @@ const (
 	DeleteEventType       = "museum.exhibit.delete"
 	LeaseRenewedEventType = "museum.exhibit.lease.renewed"
 	LeaseExpiredEventType = "museum.exhibit.lease.expired"
+	StartEventType        = "museum.exhibit.start"
+	StopEventType         = "museum.exhibit.stop"
 
 	source      = "museum"
 	contentType = "application/json"
@@ -32,6 +34,14 @@ func newEvent(eventType string, exhibit Exhibit) (cloudevents.Event, error) {
 
 func NewCreateEvent(exhibit Exhibit) (cloudevents.Event, error) {
 	return newEvent(CreateEventType, exhibit)
+}
+
+func NewStartEvent(exhibit Exhibit) (cloudevents.Event, error) {
+	return newEvent(StartEventType, exhibit)
+}
+
+func NewStopEvent(exhibit Exhibit) (cloudevents.Event, error) {
+	return newEvent(StopEventType, exhibit)
 }
 
 func NewDeleteEvent(exhibit Exhibit) (cloudevents.Event, error) {

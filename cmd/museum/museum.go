@@ -38,7 +38,7 @@ func main() {
 			fmt.Println("❌ missing file argument")
 			os.Exit(1)
 		}
-		err, exhibit, url := tool.Create(os.Args[2])
+		exhibit, url, err := tool.Create(os.Args[2])
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
@@ -57,7 +57,7 @@ func main() {
 		}
 		fmt.Println("🗑️ exhibit deleted successfully")
 	case "list":
-		err, _ := tool.List()
+		_, err := tool.List()
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
@@ -67,11 +67,13 @@ func main() {
 			fmt.Println("❌ missing id argument")
 			os.Exit(1)
 		}
-		err := tool.Warmup(os.Args[2])
+		url, err := tool.Warmup(os.Args[2])
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
+		fmt.Println("🔥 exhibit warmed up successfully")
+		fmt.Println("👉 " + url)
 	default:
 		printUsage()
 	}
