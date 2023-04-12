@@ -11,6 +11,10 @@ objects:
       MYSQL_DATABASE: wordpress
       MYSQL_USER: wordpress
       MYSQL_PASSWORD: wordpress
+    livecheck:
+      type: exec
+      config:
+        command: mysqladmin ping -h db -u wordpress -pwordpress
     mounts:
       mysql: /var/lib/mysql
     volumes:

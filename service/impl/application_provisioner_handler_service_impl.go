@@ -12,14 +12,18 @@ type ApplicationProvisionerHandlerServiceImpl struct {
 	ApplicationProvisionerService service.ApplicationProvisionerService
 }
 
-func (a ApplicationProvisionerHandlerServiceImpl) HandleEvent(_ context.Context, event *cloudevents.Event, _ string) error {
+func (a ApplicationProvisionerHandlerServiceImpl) HandleEvent(ctx context.Context, event *cloudevents.Event, id string) error {
 	switch event.Type() {
 	case domain.StartEventType:
-		// TODO
-		break
+		err := a.ApplicationProvisionerService.StartApplication(ctx, id)
+		if err != nil {
+			return err
+		}
 	case domain.StopEventType:
-		// TODO
-		break
+		err := a.ApplicationProvisionerService.StopApplication(ctx, id)
+		if err != nil {
+			return err
+		}
 	default:
 		return errors.New("unknown event type " + event.Type())
 	}

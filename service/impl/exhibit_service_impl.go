@@ -28,7 +28,7 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 	createExhibitRequest.Exhibit.Id = uuid.New().String()
 
 	// set runtime state
-	createExhibitRequest.Exhibit.RuntimeInfo = domain.ExhibitRuntimeInfo{
+	createExhibitRequest.Exhibit.RuntimeInfo = &domain.ExhibitRuntimeInfo{
 		Status:            domain.NotCreated,
 		RelatedContainers: []string{},
 	}
