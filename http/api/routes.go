@@ -76,7 +76,7 @@ func createExhibit(exhibitService service.ExhibitService, log *zap.SugaredLogger
 
 		span.AddEvent("request read")
 
-		err, id := exhibitService.CreateExhibit(ctx, domain.CreateExhibit{
+		id, err := exhibitService.CreateExhibit(ctx, domain.CreateExhibit{
 			Exhibit:   *exhibit,
 			RequestID: req.RequestID,
 		})

@@ -1,0 +1,14 @@
+spec: v1
+name: my-site
+expose: nginx
+lease: 2h
+objects:
+  - name: nginx
+    image: nginx
+    label: latest
+    livecheck:
+      type: http
+      config:
+        path: /
+        port: 80
+        status: 200
