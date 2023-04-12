@@ -44,7 +44,7 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println("🧑‍🎨 exhibit " + exhibit.Name + " created successfully")
-		fmt.Println("👉 " + url)
+		fmt.Println("‎‎‎👉 " + url)
 	case "delete":
 		if len(os.Args) < 3 {
 			fmt.Println("❌ missing id argument")
@@ -55,7 +55,7 @@ func main() {
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
-		fmt.Println("🗑️ exhibit deleted successfully")
+		fmt.Println("‎‎‎🗑️ exhibit deleted successfully")
 	case "list":
 		_, err := tool.List()
 		if err != nil {
@@ -72,8 +72,8 @@ func main() {
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
-		fmt.Println("🔥 exhibit warmed up successfully")
-		fmt.Println("👉 " + url)
+		fmt.Println("‎‎‎🔥 exhibit warmed up successfully")
+		fmt.Println("‎‎‎👉 " + url)
 	default:
 		printUsage()
 	}

@@ -139,8 +139,8 @@ You would then start the application with `museum create my-exhibit.yml`. This w
 
 ```bash
 $ museum create my-exhibit.yml
-🏛 exhibit created successfully
-👉 http://localhost:8080/exhibits/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
+ 🧑‍🎨  exhibit created successfully
+ 👉  http://localhost:8080/exhibits/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
 ```
 
 ## Accessing the applications
@@ -165,19 +165,19 @@ $ museum list
 ### Deleting an application
 ```bash
 $ museum delete my-research-project
-🗑 exhibit deleted successfully
+ 🗑  exhibit deleted successfully
 ```
 
 ### Renewing the lease manually
 ```bash
 $ museum renew my-research-project 2h
-⏲ exhibit lease renewed successfully
-👉 http://localhost:8080/exhibits/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
+ ⏲  exhibit lease renewed successfully
+ 👉  http://localhost:8080/exhibits/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
 ```
 
 ### Starting an application manually (hot start)
 ```bash
 $ museum warmup my-research-project
-🔥 exhibit warmed up successfully
-👉 http://localhost:8080/exhibits/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
+ 🔥  exhibit warmed up successfully
+ 👉  http://localhost:8080/exhibits/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
 ```
