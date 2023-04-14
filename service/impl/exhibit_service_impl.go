@@ -40,7 +40,7 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 	found := false
 	for _, c := range createExhibitRequest.Exhibit.Objects {
 		if c.Name == createExhibitRequest.Exhibit.Expose {
-			if *c.Port == "" {
+			if c.Port != nil && *c.Port == "" {
 				return "", errors.New("exhibit must expose a container with an exposed port")
 			}
 			found = true

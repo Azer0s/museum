@@ -44,7 +44,7 @@ func Create(filePath string) (*domain.Exhibit, string, error) {
 
 	exhibit.Id = id
 
-	return exhibit, a.GetBaseUrl() + "/exhibits/" + id, nil
+	return exhibit, a.GetBaseUrl() + "/exhibit/" + id, nil
 }
 
 func Delete(id string) error {
@@ -78,7 +78,7 @@ func Warmup(id string) (string, error) {
 		return "", err
 	}
 
-	return a.GetBaseUrl() + "/exhibits/" + id, nil
+	return a.GetBaseUrl() + "/exhibit/" + id, nil
 }
 
 func List() ([]domain.Exhibit, error) {
