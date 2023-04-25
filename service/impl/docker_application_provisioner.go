@@ -3,21 +3,21 @@ package impl
 import (
 	"context"
 	"errors"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	docker "github.com/docker/docker/client"
 	"museum/domain"
 	"museum/persistence"
-	service "museum/service/interface"
 )
 
 type DockerApplicationProvisionerService struct {
-	SharedPersistentState persistence.SharedPersistentState
-	ExhibitService        service.ExhibitService
-	Client                *docker.Client
+	SharedPersistentState        persistence.SharedPersistentState
+	SharedPersistentEmittedState persistence.SharedPersistentEmittedState
+	Client                       *docker.Client
 }
 
 func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx context.Context, exhibitId string) error {
-	exhibit, err := d.ExhibitService.GetExhibitById(exhibitId)
+	exhibit, err := d.SharedPersistentEmittedState.GetExhibitById(exhibitId)
 	if err != nil {
 		return err
 	}
@@ -54,6 +54,11 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 
 		exhibit.RuntimeInfo.RelatedContainers = append(exhibit.RuntimeInfo.RelatedContainers, create.ID)
 		exhibit.RuntimeInfo.Status = domain.Running
+
+		err = d.Client.ContainerStart(ctx, create.ID, types.ContainerStartOptions{})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -61,20 +66,24 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 
 func (d DockerApplicationProvisionerService) StartApplication(ctx context.Context, exhibitId string) error {
 	err := d.SharedPersistentState.WithLock(func() error {
-		exhibit, err := d.ExhibitService.GetExhibitById(exhibitId)
+		exhibit, err := d.SharedPersistentEmittedState.GetExhibitById(exhibitId)
 		if err != nil {
 			return err
+		}
+
+		// check that exhibit is not already started after lock is acquired
+		if exhibit.RuntimeInfo.Status == domain.Running {
+			return nil
 		}
 
 		if exhibit.RuntimeInfo.Status != domain.Stopped && exhibit.RuntimeInfo.Status != domain.NotCreated {
 			return errors.New(string("cannot start application in state " + exhibit.RuntimeInfo.Status))
 		}
 
-		exhibit.RuntimeInfo.Status = domain.Starting
+		exhibit.RuntimeInfo.Status = domain.Running
 		exhibit.RuntimeInfo.RelatedContainers = make([]string, 0)
 
-		// TODO: err = d.ExhibitService.UpdateExhibit(ctx, exhibit)
-		// TODO: eventService.UpdateExhibit(ctx, exhibit)
+		err = d.SharedPersistentEmittedState.StartExhibit(ctx, *exhibit)
 
 		return nil
 	})

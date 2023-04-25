@@ -99,3 +99,26 @@ func (rs *RedisStateConnector) AddExhibit(ctx context.Context, app domain.Exhibi
 
 	return nil
 }
+
+func (rs *RedisStateConnector) UpdateExhibit(ctx context.Context, app domain.Exhibit) error {
+	// create new trace span for event service
+	subCtx, span := rs.Provider.
+		Tracer("Redis persistence").
+		Start(ctx, "updateExhibit")
+	defer span.End()
+
+	// update app in redis
+	b, err := json.Marshal(app)
+	if err != nil {
+		return err
+	}
+
+	set := rs.RedisClient.Set(subCtx, rs.Config.GetRedisBaseKey()+":exhibit:"+app.Id, b, 0)
+	if set.Err() != nil {
+		return set.Err()
+	}
+
+	span.AddEvent("updated exhibit in redis")
+
+	return nil
+}

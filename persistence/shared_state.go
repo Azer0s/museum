@@ -13,6 +13,7 @@ type SharedPersistentState interface {
 	GetExhibits() ([]domain.Exhibit, error)
 	DeleteExhibitById(id string) error
 	AddExhibit(ctx context.Context, app domain.Exhibit) error
+	UpdateExhibit(ctx context.Context, app domain.Exhibit) error
 }
 
 type SharedPersistentEmittedState interface {
@@ -20,6 +21,7 @@ type SharedPersistentEmittedState interface {
 	GetExhibitById(id string) (*domain.Exhibit, error)
 	EventReceived(eventId string) (<-chan struct{}, error)
 	AddExhibit(ctx context.Context, app domain.CreateExhibit) error
-	RenewExhibitLeaseById(id string) error
-	ExpireExhibitLease(id string) error
+	RenewExhibitLease(ctx context.Context, app domain.Exhibit) error
+	ExpireExhibitLease(ctx context.Context, app domain.Exhibit) error
+	StartExhibit(ctx context.Context, app domain.Exhibit) error
 }

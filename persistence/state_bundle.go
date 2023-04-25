@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"github.com/cloudevents/sdk-go/v2/event"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"museum/domain"
@@ -32,14 +33,85 @@ func (s StateBundle) GetExhibitById(id string) (*domain.Exhibit, error) {
 	return nil, errors.New("exhibit not found")
 }
 
-func (s StateBundle) RenewExhibitLeaseById(id string) error {
-	//TODO implement me
-	panic("implement me")
+func (s StateBundle) updateExhibit(ctx context.Context, app domain.Exhibit, event event.Event) error {
+	s.CurrentStateMutex.Lock()
+	defer s.CurrentStateMutex.Unlock()
+
+	eventCtx, eventSpan := s.Provider.
+		Tracer("Event emission").
+		Start(ctx, "emitUpdateEvent")
+
+	spanEnded := false
+	defer func() {
+		if !spanEnded {
+			eventSpan.End()
+		}
+	}()
+
+	eventSpan.AddEvent("event created")
+
+	received, err := s.EventReceived(event.ID())
+	if err != nil {
+		s.Log.Debugw("failed create event receiver", "error", err)
+	}
+
+	err = s.Emitter.EmitEvent(event)
+	if err != nil {
+		s.Log.Debugw("failed to emit event", "error", err)
+		return err
+	}
+
+	eventSpan.AddEvent("event emitted")
+
+	<-received
+
+	eventSpan.AddEvent("event pinged")
+
+	err = s.SharedPersistentState.UpdateExhibit(eventCtx, app)
+	if err != nil {
+		s.Log.Debugw("failed to update exhibit", "error", err)
+		return err
+	}
+
+	for i, exhibit := range s.CurrentState {
+		if exhibit.Id == app.Id {
+			s.CurrentState[i] = app
+		}
+	}
+
+	eventSpan.AddEvent("exhibit updated")
+
+	return nil
 }
 
-func (s StateBundle) ExpireExhibitLease(id string) error {
-	//TODO implement me
-	panic("implement me")
+func (s StateBundle) StartExhibit(ctx context.Context, app domain.Exhibit) error {
+	updateEvent, err := domain.NewStartEvent(app)
+	if err != nil {
+		s.Log.Debugw("failed to create event", "error", err)
+		return err
+	}
+
+	return s.updateExhibit(ctx, app, updateEvent)
+}
+
+func (s StateBundle) RenewExhibitLease(ctx context.Context, app domain.Exhibit) error {
+	renewEvent, err := domain.NewLeaseRenewedEvent(app)
+	if err != nil {
+		s.Log.Debugw("failed to create event", "error", err)
+		return err
+	}
+
+	return s.updateExhibit(ctx, app, renewEvent)
+}
+
+func (s StateBundle) ExpireExhibitLease(ctx context.Context, app domain.Exhibit) error {
+	expireEvent, err := domain.NewLeaseExpiredEvent(app)
+	if err != nil {
+		s.Log.Debugw("failed to create event", "error", err)
+		return err
+	}
+
+	return s.updateExhibit(ctx, app, expireEvent)
 }
 
 func (s StateBundle) GetExhibits() []domain.Exhibit {
@@ -103,6 +175,8 @@ func (s StateBundle) AddExhibit(ctx context.Context, app domain.CreateExhibit) e
 		}
 
 		s.CurrentState = append(s.CurrentState, app.Exhibit)
+
+		eventSpan.AddEvent("exhibit added")
 
 		return nil
 	})
