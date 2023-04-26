@@ -65,6 +65,8 @@ func Run() {
 	ioc.ForFunc(c, exhibit.RegisterRoutes)
 	ioc.ForFunc(c, api.RegisterRoutes)
 
+	//TODO: start cron goroutine to check for expired exhibits
+
 	ioc.ForFunc(c, func(router *router.Mux, config config.Config, log *zap.SugaredLogger) {
 		log.Infof("Starting server on port %s", config.GetPort())
 		err := http.ListenAndServe(fmt.Sprintf(":%s", config.GetPort()), router)

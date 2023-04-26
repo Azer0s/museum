@@ -8,6 +8,8 @@ import (
 	docker "github.com/docker/docker/client"
 	"museum/domain"
 	"museum/persistence"
+	"strconv"
+	"time"
 )
 
 type DockerApplicationProvisionerService struct {
@@ -82,6 +84,8 @@ func (d DockerApplicationProvisionerService) StartApplication(ctx context.Contex
 
 		exhibit.RuntimeInfo.Status = domain.Running
 		exhibit.RuntimeInfo.RelatedContainers = make([]string, 0)
+		exhibit.RuntimeInfo.Hostname = exhibit.Expose
+		exhibit.RuntimeInfo.LastAccessed = strconv.FormatInt(time.Now().UnixNano(), 10)
 
 		err = d.SharedPersistentEmittedState.StartExhibit(ctx, *exhibit)
 
