@@ -6,6 +6,7 @@ import (
 	service "museum/service/interface"
 	"museum/util/cache"
 	"os/exec"
+	"strings"
 )
 
 type DockerHostApplicationResolverService struct {
@@ -34,7 +35,9 @@ func (d DockerHostApplicationResolverService) ResolveApplication(exhibitId strin
 		return "", err
 	}
 
-	d.IpCache.Put(exhibit.RuntimeInfo.Hostname, string(ip))
+	ipStr := strings.ReplaceAll(string(ip), "\n", "")
 
-	return string(ip), nil
+	d.IpCache.Put(exhibit.RuntimeInfo.Hostname, ipStr)
+
+	return ipStr, nil
 }

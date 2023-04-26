@@ -2,7 +2,11 @@ package exhibit
 
 import (
 	_ "embed"
+	"io"
+	"museum/domain"
 	"museum/http/router"
+	"museum/persistence"
+	service "museum/service/interface"
 	"net/http"
 	"text/template"
 )
@@ -14,27 +18,75 @@ type LoadingPageTemplate struct {
 	Exhibit string
 }
 
-func loadingPageHandler() router.MuxHandlerFunc {
+func proxyHandler(state persistence.SharedPersistentEmittedState, resolver service.ApplicationResolverService) router.MuxHandlerFunc {
 	tmpl, _ := template.New("loading").Parse(string(loadingPage))
 
 	return func(res *router.Response, req *router.Request) {
-		idMap := map[string]string{
-			"foo": "Foo App",
-			"bar": "Bar App",
-		}
-
-		appName, ok := idMap[req.Params["id"]]
+		id, ok := req.Params["id"]
 		if !ok {
-			appName = "Museum"
+			res.WriteHeader(http.StatusBadRequest)
+			return
 		}
 
-		err := tmpl.Execute(res, LoadingPageTemplate{Exhibit: appName})
+		app, err := state.GetExhibitById(id)
+		if err != nil {
+			res.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if app.RuntimeInfo.Status != domain.Running {
+			err := tmpl.Execute(res, LoadingPageTemplate{Exhibit: app.Name})
+			//TODO: start exhibit
+			if err != nil {
+				res.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			return
+		}
+
+		// forward to exhibit
+		ip, err := resolver.ResolveApplication(id)
+		if err != nil {
+			res.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		// proxy the request
+		proxyReq, err := http.NewRequest(req.Method, "http://"+ip, req.Body)
+		if err != nil {
+			res.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		proxyReq.Header = req.Header
+		proxyReq.Host = req.Host
+
+		proxyRes, err := http.DefaultClient.Do(proxyReq)
+		if err != nil {
+			res.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		for k, v := range proxyRes.Header {
+			res.Header().Set(k, v[0])
+		}
+
+		res.WriteHeader(proxyRes.StatusCode)
+
+		// read entire body
+		body, err := io.ReadAll(proxyRes.Body)
+		if err != nil {
+			res.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		_, err = res.Write(body)
 		if err != nil {
 			res.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
 }
-func RegisterRoutes(r *router.Mux) {
-	r.AddRoute(router.Get("/exhibit/{id}/>>", loadingPageHandler()))
+func RegisterRoutes(r *router.Mux, state persistence.SharedPersistentEmittedState, resolver service.ApplicationResolverService) {
+	r.AddRoute(router.Get("/exhibit/{id}/>>", proxyHandler(state, resolver)))
 }
