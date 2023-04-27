@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -75,6 +75,27 @@
         }
     </style>
     <title>Loading {{ .Exhibit }}...</title>
+
+    <script type="module">
+        function timeout(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        let host = "{{ .Host }}";
+        let exhibitId = "{{ .ExhibitId }}";
+
+        do {
+            await timeout(5000);
+            let res = await fetch("http://" + host + "/api/exhibits/" + exhibitId);
+            let data = await res.json();
+
+            if (data["runtime_info"]["status"] === "running") {
+                window.location.href = "http://" + host + "/exhibit/" + exhibitId;
+                break;
+            }
+            console.log(data);
+        } while (true);
+    </script>
 </head>
 
 <body>

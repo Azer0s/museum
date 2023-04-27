@@ -8,12 +8,15 @@ import (
 )
 
 func NewDockerClient(config config.Config, log *zap.SugaredLogger) *docker.Client {
+	ctx := context.Background()
 	c, err := docker.NewClientWithOpts(docker.WithHost(config.GetDockerHost()))
 	if err != nil {
 		log.Panicw("failed to create docker client", "error", err)
 	}
 
-	info, err := c.Info(context.Background())
+	c.NegotiateAPIVersion(ctx)
+
+	info, err := c.Info(ctx)
 	if err != nil {
 		log.Panicw("failed to get docker info", "error", err)
 	}
