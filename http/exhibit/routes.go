@@ -1,7 +1,9 @@
 package exhibit
 
 import (
+	"context"
 	_ "embed"
+	"go.uber.org/zap"
 	"io"
 	"museum/config"
 	"museum/domain"
@@ -21,7 +23,7 @@ type LoadingPageTemplate struct {
 	ExhibitId string
 }
 
-func proxyHandler(state persistence.SharedPersistentEmittedState, resolver service.ApplicationResolverService, c config.Config) router.MuxHandlerFunc {
+func proxyHandler(state persistence.SharedPersistentEmittedState, resolver service.ApplicationResolverService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, c config.Config) router.MuxHandlerFunc {
 	tmpl, _ := template.New("loading").Parse(string(loadingPage))
 	//TODO: log everything
 
@@ -29,12 +31,14 @@ func proxyHandler(state persistence.SharedPersistentEmittedState, resolver servi
 		id, ok := req.Params["id"]
 		if !ok {
 			res.WriteHeader(http.StatusBadRequest)
+			log.Warn("no id provided", "requestId", req.RequestID)
 			return
 		}
 
 		app, err := state.GetExhibitById(id)
 		if err != nil {
 			res.WriteHeader(http.StatusInternalServerError)
+			log.Warnw("error getting exhibit", "error", err, "requestId", req.RequestID)
 			return
 		}
 
@@ -44,9 +48,18 @@ func proxyHandler(state persistence.SharedPersistentEmittedState, resolver servi
 				Host:      c.GetHostname() + ":" + c.GetPort(),
 				ExhibitId: app.Id,
 			})
-			//TODO: start exhibit
+
+			go func() {
+				err := provisioner.StartApplication(context.Background(), id)
+				if err != nil {
+					log.Errorw("error starting application", "error", err, "requestId", req.RequestID)
+					return
+				}
+			}()
+
 			if err != nil {
 				res.WriteHeader(http.StatusInternalServerError)
+				log.Warnw("error executing template", "error", err, "requestId", req.RequestID)
 				return
 			}
 			return
@@ -95,6 +108,6 @@ func proxyHandler(state persistence.SharedPersistentEmittedState, resolver servi
 		}
 	}
 }
-func RegisterRoutes(r *router.Mux, state persistence.SharedPersistentEmittedState, resolver service.ApplicationResolverService, config config.Config) {
-	r.AddRoute(router.Get("/exhibit/{id}/>>", proxyHandler(state, resolver, config)))
+func RegisterRoutes(r *router.Mux, state persistence.SharedPersistentEmittedState, resolver service.ApplicationResolverService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, config config.Config) {
+	r.AddRoute(router.Get("/exhibit/{id}/>>", proxyHandler(state, resolver, provisioner, log, config)))
 }

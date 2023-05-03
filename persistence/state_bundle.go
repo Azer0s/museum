@@ -14,7 +14,7 @@ type StateBundle struct {
 	SharedPersistentState SharedPersistentState
 	Emitter               Emitter
 	Consumer              Consumer
-	CurrentState          []domain.Exhibit
+	CurrentState          *[]domain.Exhibit
 	CurrentStateMutex     *sync.RWMutex
 	ConfirmEvents         map[string]chan struct{}
 	ConfirmEventsMutex    *sync.RWMutex
@@ -25,7 +25,7 @@ type StateBundle struct {
 func (s StateBundle) GetExhibitById(id string) (*domain.Exhibit, error) {
 	s.CurrentStateMutex.RLock()
 	defer s.CurrentStateMutex.RUnlock()
-	for _, exhibit := range s.CurrentState {
+	for _, exhibit := range *s.CurrentState {
 		if exhibit.Id == id {
 			return &exhibit, nil
 		}
@@ -73,9 +73,9 @@ func (s StateBundle) updateExhibit(ctx context.Context, app domain.Exhibit, even
 		return err
 	}
 
-	for i, exhibit := range s.CurrentState {
+	for i, exhibit := range *s.CurrentState {
 		if exhibit.Id == app.Id {
-			s.CurrentState[i] = app
+			(*s.CurrentState)[i] = app
 		}
 	}
 
@@ -118,7 +118,7 @@ func (s StateBundle) GetExhibits() []domain.Exhibit {
 	// return s.SharedPersistentState.GetExhibits()
 	s.CurrentStateMutex.RLock()
 	defer s.CurrentStateMutex.RUnlock()
-	return s.CurrentState
+	return *s.CurrentState
 }
 
 func (s StateBundle) AddExhibit(ctx context.Context, app domain.CreateExhibit) error {
@@ -174,7 +174,7 @@ func (s StateBundle) AddExhibit(ctx context.Context, app domain.CreateExhibit) e
 			return err
 		}
 
-		s.CurrentState = append(s.CurrentState, app.Exhibit)
+		*s.CurrentState = append(*s.CurrentState, app.Exhibit)
 
 		eventSpan.AddEvent("exhibit added")
 

@@ -78,7 +78,7 @@ func NewSharedPersistentEmittedState(state SharedPersistentState, emitter Emitte
 			return err
 		}
 
-		sb.CurrentState = currentState
+		sb.CurrentState = &currentState
 		sb.CurrentStateMutex = &sync.RWMutex{}
 
 		return nil

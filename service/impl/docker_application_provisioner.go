@@ -67,7 +67,7 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 }
 
 func (d DockerApplicationProvisionerService) StartApplication(ctx context.Context, exhibitId string) error {
-	err := d.SharedPersistentState.WithLock(func() error {
+	return d.SharedPersistentState.WithLock(func() error {
 		exhibit, err := d.SharedPersistentEmittedState.GetExhibitById(exhibitId)
 		if err != nil {
 			return err
@@ -89,13 +89,6 @@ func (d DockerApplicationProvisionerService) StartApplication(ctx context.Contex
 
 		err = d.SharedPersistentEmittedState.StartExhibit(ctx, *exhibit)
 
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	return d.SharedPersistentState.WithLock(func() error {
 		return d.startApplicationInsideLock(ctx, exhibitId)
 	})
 }
