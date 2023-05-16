@@ -49,7 +49,9 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 			}
 		}
 
-		create, err := d.Client.ContainerCreate(ctx, containerConfig, nil, nil, nil, o.Name)
+		name := exhibit.Name + "_" + o.Name
+
+		create, err := d.Client.ContainerCreate(ctx, containerConfig, nil, nil, nil, name)
 		if err != nil {
 			return err
 		}
@@ -87,6 +89,7 @@ func (d DockerApplicationProvisionerService) StartApplication(ctx context.Contex
 		exhibit.RuntimeInfo.Hostname = exhibit.Expose
 		exhibit.RuntimeInfo.LastAccessed = strconv.FormatInt(time.Now().UnixNano(), 10)
 
+		//TODO: we should probably first start the application and then update everything
 		err = d.SharedPersistentEmittedState.StartExhibit(ctx, *exhibit)
 
 		return d.startApplicationInsideLock(ctx, exhibitId)
