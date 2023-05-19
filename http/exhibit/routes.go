@@ -12,6 +12,7 @@ import (
 	service "museum/service/interface"
 	"net/http"
 	"text/template"
+	"time"
 )
 
 //go:embed loading.html
@@ -68,6 +69,7 @@ func proxyHandler(state persistence.SharedPersistentEmittedState, resolver servi
 		// forward to exhibit
 		ip, err := resolver.ResolveApplication(id)
 		if err != nil {
+			log.Debugw("error resolving application", "error", err, "requestId", req.RequestID)
 			res.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -75,6 +77,7 @@ func proxyHandler(state persistence.SharedPersistentEmittedState, resolver servi
 		// proxy the request
 		proxyReq, err := http.NewRequest(req.Method, "http://"+ip, req.Body)
 		if err != nil {
+			log.Debugw("error creating proxy request", "error", err, "requestId", req.RequestID)
 			res.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -82,8 +85,24 @@ func proxyHandler(state persistence.SharedPersistentEmittedState, resolver servi
 		proxyReq.Header = req.Header
 		proxyReq.Host = req.Host
 
-		proxyRes, err := http.DefaultClient.Do(proxyReq)
-		if err != nil {
+		//do request with timeout
+		var proxyRes *http.Response
+		resultChan := make(chan error)
+		go func() {
+			var err error
+			proxyRes, err = http.DefaultClient.Do(proxyReq)
+			resultChan <- err
+		}()
+
+		select {
+		case err := <-resultChan:
+			if err != nil {
+				log.Debugw("error doing proxy request", "error", err, "requestId", req.RequestID)
+				res.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		case <-time.After(5 * time.Second):
+			log.Debugw("timeout doing proxy request", "requestId", req.RequestID)
 			res.WriteHeader(http.StatusInternalServerError)
 			return
 		}

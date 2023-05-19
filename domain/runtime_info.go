@@ -3,6 +3,7 @@ package domain
 type Status string
 
 const (
+	Starting   Status = "starting"
 	Running    Status = "running"
 	Stopped    Status = "stopped"
 	NotCreated Status = "not_created"

@@ -84,6 +84,15 @@ func (s StateBundle) updateExhibit(ctx context.Context, app domain.Exhibit, even
 	return nil
 }
 
+func (s StateBundle) StartingExhibit(ctx context.Context, app domain.Exhibit) error {
+	updateEvent, err := domain.NewStartingEvent(app)
+	if err != nil {
+		s.Log.Debugw("failed to create event", "error", err)
+		return err
+	}
+	return s.updateExhibit(ctx, app, updateEvent)
+}
+
 func (s StateBundle) StartExhibit(ctx context.Context, app domain.Exhibit) error {
 	updateEvent, err := domain.NewStartEvent(app)
 	if err != nil {

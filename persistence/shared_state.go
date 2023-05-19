@@ -24,4 +24,5 @@ type SharedPersistentEmittedState interface {
 	RenewExhibitLease(ctx context.Context, app domain.Exhibit) error
 	ExpireExhibitLease(ctx context.Context, app domain.Exhibit) error
 	StartExhibit(ctx context.Context, app domain.Exhibit) error
+	StartingExhibit(ctx context.Context, app domain.Exhibit) error
 }

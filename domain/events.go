@@ -11,6 +11,7 @@ const (
 	LeaseRenewedEventType = "museum.exhibit.lease.renewed"
 	LeaseExpiredEventType = "museum.exhibit.lease.expired"
 	StartEventType        = "museum.exhibit.start"
+	StartingEventType     = "museum.exhibit.starting"
 	StopEventType         = "museum.exhibit.stop"
 
 	source      = "museum"
@@ -38,6 +39,10 @@ func NewCreateEvent(exhibit Exhibit) (cloudevents.Event, error) {
 
 func NewStartEvent(exhibit Exhibit) (cloudevents.Event, error) {
 	return newEvent(StartEventType, exhibit)
+}
+
+func NewStartingEvent(exhibit Exhibit) (cloudevents.Event, error) {
+	return newEvent(StartingEventType, exhibit)
 }
 
 func NewStopEvent(exhibit Exhibit) (cloudevents.Event, error) {

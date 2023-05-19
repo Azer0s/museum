@@ -18,12 +18,7 @@ type DockerApplicationProvisionerService struct {
 	Client                       *docker.Client
 }
 
-func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx context.Context, exhibitId string) error {
-	exhibit, err := d.SharedPersistentEmittedState.GetExhibitById(exhibitId)
-	if err != nil {
-		return err
-	}
-
+func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx context.Context, exhibit *domain.Exhibit) error {
 	sortedObjects := exhibit.Objects
 	if exhibit.Order != nil {
 		sortedObjects = make([]domain.Object, 0)
@@ -58,18 +53,21 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 
 		exhibit.RuntimeInfo.RelatedContainers = append(exhibit.RuntimeInfo.RelatedContainers, create.ID)
 		exhibit.RuntimeInfo.Status = domain.Running
+		exhibit.RuntimeInfo.Hostname = name
 
 		err = d.Client.ContainerStart(ctx, create.ID, types.ContainerStartOptions{})
 		if err != nil {
 			return err
 		}
+
+		//TODO: handle exhibit already started
 	}
 
 	return nil
 }
 
 func (d DockerApplicationProvisionerService) StartApplication(ctx context.Context, exhibitId string) error {
-	return d.SharedPersistentState.WithLock(func() error {
+	err := d.SharedPersistentState.WithLock(func() error {
 		exhibit, err := d.SharedPersistentEmittedState.GetExhibitById(exhibitId)
 		if err != nil {
 			return err
@@ -84,15 +82,27 @@ func (d DockerApplicationProvisionerService) StartApplication(ctx context.Contex
 			return errors.New(string("cannot start application in state " + exhibit.RuntimeInfo.Status))
 		}
 
-		exhibit.RuntimeInfo.Status = domain.Running
+		exhibit.RuntimeInfo.Status = domain.Starting
 		exhibit.RuntimeInfo.RelatedContainers = make([]string, 0)
-		exhibit.RuntimeInfo.Hostname = exhibit.Expose
 		exhibit.RuntimeInfo.LastAccessed = strconv.FormatInt(time.Now().UnixNano(), 10)
 
-		//TODO: we should probably first start the application and then update everything
-		err = d.SharedPersistentEmittedState.StartExhibit(ctx, *exhibit)
+		return d.SharedPersistentEmittedState.StartingExhibit(ctx, *exhibit)
+	})
 
-		return d.startApplicationInsideLock(ctx, exhibitId)
+	if err != nil {
+		//TODO: rollback
+		return err
+	}
+
+	return d.SharedPersistentState.WithLock(func() error {
+		exhibit, err := d.SharedPersistentEmittedState.GetExhibitById(exhibitId)
+
+		err = d.startApplicationInsideLock(ctx, exhibit)
+		if err != nil {
+			return err
+		}
+
+		return d.SharedPersistentEmittedState.StartExhibit(ctx, *exhibit)
 	})
 }
 
