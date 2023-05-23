@@ -8,6 +8,7 @@ import (
 	docker "github.com/docker/docker/client"
 	"museum/domain"
 	"museum/persistence"
+	service "museum/service/interface"
 	"strconv"
 	"time"
 )
@@ -15,6 +16,7 @@ import (
 type DockerApplicationProvisionerService struct {
 	SharedPersistentState        persistence.SharedPersistentState
 	SharedPersistentEmittedState persistence.SharedPersistentEmittedState
+	LivecheckFactoryService      service.LivecheckFactoryService
 	Client                       *docker.Client
 }
 
@@ -63,11 +65,53 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 		if o.Name == exhibit.Expose {
 			exhibit.RuntimeInfo.Hostname = name
 		}
+
+		if o.Livecheck != nil {
+			err := d.doLivecheck(*exhibit, o)
+			if err != nil {
+				return err
+			}
+		}
+
 		exhibit.RuntimeInfo.RelatedContainers = append(exhibit.RuntimeInfo.RelatedContainers, create.ID)
 	}
 
 	exhibit.RuntimeInfo.Status = domain.Running
 
+	return nil
+}
+
+func (d DockerApplicationProvisionerService) doLivecheck(exhibit domain.Exhibit, object domain.Object) error {
+	var err error = nil
+	runtimeInfoCopy := *exhibit.RuntimeInfo
+	exhibit.RuntimeInfo = &runtimeInfoCopy
+
+	livecheck := d.LivecheckFactoryService.GetLivecheckService(object.Livecheck.Type)
+	if livecheck == nil {
+		return errors.New("livecheck type not found")
+	}
+
+	maxRetries := 10
+	if r, ok := object.Livecheck.Config["maxRetries"]; ok {
+		maxRetries, err = strconv.Atoi(r)
+		if err != nil {
+			return err
+		}
+	}
+
+	interval := 1 * time.Second
+	if i, ok := object.Livecheck.Config["interval"]; ok {
+		interval, err = time.ParseDuration(i)
+		if err != nil {
+			return err
+		}
+	}
+
+	retry := true
+	for counter := 0; (retry && err == nil) && counter < maxRetries; counter++ {
+		retry, err = livecheck.Check(exhibit, object)
+		time.Sleep(interval)
+	}
 	return nil
 }
 

@@ -3,5 +3,5 @@ package service
 import "museum/domain"
 
 type LivecheckService interface {
-	Check(object domain.Object) error
+	Check(exhibit domain.Exhibit, object domain.Object) (retry bool, err error)
 }

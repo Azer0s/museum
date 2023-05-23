@@ -51,7 +51,7 @@ func proxyHandler(state persistence.SharedPersistentEmittedState, resolver servi
 
 		// if the application is not running, start it and return the loading page
 		// if the state is starting, only return the loading page
-		if app.RuntimeInfo.Status != domain.Running && app.RuntimeInfo.Status != domain.Starting {
+		if app.RuntimeInfo.Status != domain.Running {
 			err := tmpl.Execute(res, LoadingPageTemplate{
 				Exhibit:   app.Name,
 				Host:      c.GetHostname() + ":" + c.GetPort(),

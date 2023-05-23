@@ -36,6 +36,7 @@ objects:
     livecheck:
       type: http
       config:
+        method: GET
         url: http://wordpress:80
         status: 200
 

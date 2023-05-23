@@ -9,10 +9,11 @@ import (
 
 type ApplicationProvisionerService service.ApplicationProvisionerService
 
-func NewDockerApplicationProvisionerService(client *docker.Client, sharedPersistentState persistence.SharedPersistentState, sharedPersistentEmittedState persistence.SharedPersistentEmittedState) ApplicationProvisionerService {
+func NewDockerApplicationProvisionerService(client *docker.Client, sharedPersistentState persistence.SharedPersistentState, sharedPersistentEmittedState persistence.SharedPersistentEmittedState, livecheckFactoryService LivecheckFactoryService) ApplicationProvisionerService {
 	return &impl.DockerApplicationProvisionerService{
 		SharedPersistentState:        sharedPersistentState,
 		SharedPersistentEmittedState: sharedPersistentEmittedState,
+		LivecheckFactoryService:      livecheckFactoryService,
 		Client:                       client,
 	}
 }

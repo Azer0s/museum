@@ -55,15 +55,21 @@ func Run() {
 	// register shared state
 	ioc.RegisterSingleton[persistence.SharedPersistentEmittedState](c, persistence.NewSharedPersistentEmittedState)
 
+	// register services
+	ioc.RegisterSingleton[service.ExhibitService](c, service.NewExhibitService)
+	ioc.RegisterSingleton[service.ApplicationResolverService](c, service.NewDockerHostApplicationResolverService)
+
 	// register livecheck
-	ioc.RegisterSingleton[*impl.HttpLivecheck](c, util.IdentityF(new(impl.HttpLivecheck)))
+	ioc.RegisterSingleton[*impl.HttpLivecheck](c, func(resolverService service.ApplicationResolverService) *impl.HttpLivecheck {
+		return &impl.HttpLivecheck{
+			ApplicationResolverService: resolverService,
+		}
+	})
 	ioc.RegisterSingleton[*impl.ExecLivecheck](c, util.IdentityF(new(impl.ExecLivecheck)))
 	ioc.RegisterSingleton[service.LivecheckFactoryService](c, util.IdentityF(ioc.ForStruct[impl.LivecheckFactoryServiceImpl](c)))
 
 	// register services
-	ioc.RegisterSingleton[service.ExhibitService](c, service.NewExhibitService)
 	ioc.RegisterSingleton[service.ApplicationProvisionerService](c, service.NewDockerApplicationProvisionerService)
-	ioc.RegisterSingleton[service.ApplicationResolverService](c, service.NewDockerHostApplicationResolverService)
 	ioc.RegisterSingleton[service.ApplicationProvisionerHandlerService](c, service.NewApplicationProvisionerHandlerService)
 
 	// register router and routes

@@ -9,5 +9,6 @@ objects:
     livecheck:
       type: http
       config:
+        method: GET
         url: http://localhost:80
         status: 200
