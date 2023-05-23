@@ -48,20 +48,25 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 
 		create, err := d.Client.ContainerCreate(ctx, containerConfig, nil, nil, nil, name)
 		if err != nil {
+			//TODO: rollback
 			return err
 		}
 
-		exhibit.RuntimeInfo.RelatedContainers = append(exhibit.RuntimeInfo.RelatedContainers, create.ID)
-		exhibit.RuntimeInfo.Status = domain.Running
-		exhibit.RuntimeInfo.Hostname = name
+		//TODO: handle exhibit already started, check for docker status
 
 		err = d.Client.ContainerStart(ctx, create.ID, types.ContainerStartOptions{})
 		if err != nil {
+			//TODO: rollback
 			return err
 		}
 
-		//TODO: handle exhibit already started
+		if o.Name == exhibit.Expose {
+			exhibit.RuntimeInfo.Hostname = name
+		}
+		exhibit.RuntimeInfo.RelatedContainers = append(exhibit.RuntimeInfo.RelatedContainers, create.ID)
 	}
+
+	exhibit.RuntimeInfo.Status = domain.Running
 
 	return nil
 }

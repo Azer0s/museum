@@ -43,20 +43,30 @@ func proxyHandler(state persistence.SharedPersistentEmittedState, resolver servi
 			return
 		}
 
-		if app.RuntimeInfo.Status != domain.Running {
+		// if the application is stopping, return a 503
+		if app.RuntimeInfo.Status == domain.Stopping {
+			res.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+
+		// if the application is not running, start it and return the loading page
+		// if the state is starting, only return the loading page
+		if app.RuntimeInfo.Status != domain.Running && app.RuntimeInfo.Status != domain.Starting {
 			err := tmpl.Execute(res, LoadingPageTemplate{
 				Exhibit:   app.Name,
 				Host:      c.GetHostname() + ":" + c.GetPort(),
 				ExhibitId: app.Id,
 			})
 
-			go func() {
-				err := provisioner.StartApplication(context.Background(), id)
-				if err != nil {
-					log.Errorw("error starting application", "error", err, "requestId", req.RequestID)
-					return
-				}
-			}()
+			if app.RuntimeInfo.Status != domain.Starting {
+				go func() {
+					err := provisioner.StartApplication(context.Background(), id)
+					if err != nil {
+						log.Warnw("error starting application", "error", err, "requestId", req.RequestID)
+						return
+					}
+				}()
+			}
 
 			if err != nil {
 				res.WriteHeader(http.StatusInternalServerError)

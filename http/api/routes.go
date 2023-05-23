@@ -81,7 +81,7 @@ func createExhibit(exhibitService service.ExhibitService, log *zap.SugaredLogger
 			RequestID: req.RequestID,
 		})
 		if err != nil {
-			log.Errorw("error creating exhibit", "error", err, "requestId", req.RequestID)
+			log.Warnw("error creating exhibit", "error", err, "requestId", req.RequestID)
 			res.WriteErr(err)
 			return
 		}

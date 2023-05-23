@@ -21,7 +21,7 @@ func (n NatsConsumer) GetEvents() (<-chan cloudevents.Event, error) {
 			var event cloudevents.Event
 			err := event.UnmarshalJSON(msg.Data)
 			if err != nil {
-				n.Log.Warnw("error unmarshalling event", "error", err)
+				n.Log.Errorw("error unmarshalling event", "error", err)
 				return
 			}
 

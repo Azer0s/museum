@@ -9,6 +9,5 @@ objects:
     livecheck:
       type: http
       config:
-        path: /
-        port: 80
+        url: http://localhost:80
         status: 200

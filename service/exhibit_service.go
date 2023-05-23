@@ -9,7 +9,7 @@ import (
 
 type ExhibitService service.ExhibitService
 
-func NewExhibitServiceImpl(state persistence.SharedPersistentEmittedState, provider trace.TracerProvider) ExhibitService {
+func NewExhibitService(state persistence.SharedPersistentEmittedState, provider trace.TracerProvider) ExhibitService {
 	return &impl.ExhibitServiceImpl{
 		State:    state,
 		Provider: provider,

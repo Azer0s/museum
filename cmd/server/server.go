@@ -17,6 +17,8 @@ import (
 	"museum/observability"
 	"museum/persistence"
 	"museum/service"
+	"museum/service/impl"
+	"museum/util"
 	"net/http"
 )
 
@@ -53,8 +55,13 @@ func Run() {
 	// register shared state
 	ioc.RegisterSingleton[persistence.SharedPersistentEmittedState](c, persistence.NewSharedPersistentEmittedState)
 
+	// register livecheck
+	ioc.RegisterSingleton[*impl.HttpLivecheck](c, util.IdentityF(new(impl.HttpLivecheck)))
+	ioc.RegisterSingleton[*impl.ExecLivecheck](c, util.IdentityF(new(impl.ExecLivecheck)))
+	ioc.RegisterSingleton[service.LivecheckFactoryService](c, util.IdentityF(ioc.ForStruct[impl.LivecheckFactoryServiceImpl](c)))
+
 	// register services
-	ioc.RegisterSingleton[service.ExhibitService](c, service.NewExhibitServiceImpl)
+	ioc.RegisterSingleton[service.ExhibitService](c, service.NewExhibitService)
 	ioc.RegisterSingleton[service.ApplicationProvisionerService](c, service.NewDockerApplicationProvisionerService)
 	ioc.RegisterSingleton[service.ApplicationResolverService](c, service.NewDockerHostApplicationResolverService)
 	ioc.RegisterSingleton[service.ApplicationProvisionerHandlerService](c, service.NewApplicationProvisionerHandlerService)

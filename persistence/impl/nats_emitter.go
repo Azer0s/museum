@@ -16,13 +16,13 @@ type NatsEmitter struct {
 func (n NatsEmitter) EmitEvent(event cloudevents.Event) error {
 	e, err := event.MarshalJSON()
 	if err != nil {
-		n.Log.Warnw("error marshalling event", "error", err)
+		n.Log.Errorw("error marshalling event", "error", err)
 		return err
 	}
 
 	err = n.Conn.Publish(n.Config.GetNatsSubject(), e)
 	if err != nil {
-		n.Log.Warnw("error publishing event", "error", err)
+		n.Log.Errorw("error publishing event", "error", err)
 		return err
 	}
 
