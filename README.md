@@ -162,6 +162,12 @@ $ museum list
         📦 my-perl-app (perl:5.30)
 ```
 
+### Manually stopping an application
+```bash
+$ museum stop my-research-project
+ 🛑  exhibit stopped successfully
+```
+
 ### Deleting an application
 ```bash
 $ museum delete my-research-project

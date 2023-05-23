@@ -37,7 +37,8 @@ objects:
       type: http
       config:
         method: GET
-        url: http://wordpress:80
+        path: /
+        port: 80
         status: 200
 
 order:

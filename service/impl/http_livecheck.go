@@ -34,7 +34,12 @@ func (h *HttpLivecheck) Check(exhibit domain.Exhibit, object domain.Object) (ret
 		method = "GET"
 	}
 
-	req, err := http.NewRequest(strings.ToUpper(method), "http://"+ip+":"+port, nil)
+	path, ok := object.Livecheck.Config["path"]
+	if !ok {
+		path = "/"
+	}
+
+	req, err := http.NewRequest(strings.ToUpper(method), "http://"+ip+":"+port+path, nil)
 	if err != nil {
 		retry = false
 		return
