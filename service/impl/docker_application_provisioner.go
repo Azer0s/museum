@@ -14,10 +14,9 @@ import (
 )
 
 type DockerApplicationProvisionerService struct {
-	SharedPersistentState        persistence.SharedPersistentState
-	SharedPersistentEmittedState persistence.SharedPersistentEmittedState
-	LivecheckFactoryService      service.LivecheckFactoryService
-	Client                       *docker.Client
+	State                   persistence.State
+	LivecheckFactoryService service.LivecheckFactoryService
+	Client                  *docker.Client
 }
 
 func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx context.Context, exhibit *domain.Exhibit) error {
@@ -116,8 +115,9 @@ func (d DockerApplicationProvisionerService) doLivecheck(exhibit domain.Exhibit,
 }
 
 func (d DockerApplicationProvisionerService) StartApplication(ctx context.Context, exhibitId string) error {
-	err := d.SharedPersistentState.WithLock(func() error {
-		exhibit, err := d.SharedPersistentEmittedState.GetExhibitById(exhibitId)
+	//TODO: log and span
+	err := d.State.WithLock(ctx, exhibitId, func() error {
+		exhibit, err := d.State.GetExhibitById(ctx, exhibitId)
 		if err != nil {
 			return err
 		}
@@ -135,7 +135,7 @@ func (d DockerApplicationProvisionerService) StartApplication(ctx context.Contex
 		exhibit.RuntimeInfo.RelatedContainers = make([]string, 0)
 		exhibit.RuntimeInfo.LastAccessed = strconv.FormatInt(time.Now().UnixNano(), 10)
 
-		return d.SharedPersistentEmittedState.StartingExhibit(ctx, *exhibit)
+		return d.State.UpdateExhibit(ctx, exhibit)
 	})
 
 	if err != nil {
@@ -143,15 +143,15 @@ func (d DockerApplicationProvisionerService) StartApplication(ctx context.Contex
 		return err
 	}
 
-	return d.SharedPersistentState.WithLock(func() error {
-		exhibit, err := d.SharedPersistentEmittedState.GetExhibitById(exhibitId)
+	return d.State.WithLock(ctx, exhibitId, func() error {
+		exhibit, err := d.State.GetExhibitById(ctx, exhibitId)
 
-		err = d.startApplicationInsideLock(ctx, exhibit)
+		err = d.startApplicationInsideLock(ctx, &exhibit)
 		if err != nil {
 			return err
 		}
 
-		return d.SharedPersistentEmittedState.StartExhibit(ctx, *exhibit)
+		return d.State.UpdateExhibit(ctx, exhibit)
 	})
 }
 

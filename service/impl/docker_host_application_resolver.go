@@ -1,21 +1,22 @@
 package impl
 
 import (
+	"context"
 	"errors"
 	"museum/domain"
-	service "museum/service/interface"
+	"museum/persistence"
 	"museum/util/cache"
 	"os/exec"
 	"strings"
 )
 
 type DockerHostApplicationResolverService struct {
-	ExhibitService service.ExhibitService
-	IpCache        *cache.LRU[string, string]
+	State   persistence.State
+	IpCache *cache.LRU[string, string]
 }
 
-func (d DockerHostApplicationResolverService) ResolveApplication(exhibitId string) (string, error) {
-	exhibit, err := d.ExhibitService.GetExhibitById(exhibitId)
+func (d DockerHostApplicationResolverService) ResolveApplication(ctx context.Context, exhibitId string) (string, error) {
+	exhibit, err := d.State.GetExhibitById(ctx, exhibitId)
 	if err != nil {
 		return "", err
 	}
@@ -39,7 +40,7 @@ func (d DockerHostApplicationResolverService) ResolveApplication(exhibitId strin
 		return "", errors.New("exhibit does not have an expose container")
 	}
 
-	ipStr, err := d.ResolveExhibitObject(*exhibit, *hostContainer)
+	ipStr, err := d.ResolveExhibitObject(exhibit, *hostContainer)
 	if err != nil {
 		return "", err
 	}

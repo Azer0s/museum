@@ -3,8 +3,7 @@ package server
 import (
 	"fmt"
 	docker "github.com/docker/docker/client"
-	"github.com/nats-io/nats.go"
-	goredislib "github.com/redis/go-redis/v9"
+	etcd "go.etcd.io/etcd/client/v3"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
@@ -39,21 +38,11 @@ func Run() {
 	ioc.RegisterSingleton[*observability.TracerProviderFactory](c, observability.NewTracerProviderFactory)
 	ioc.RegisterSingleton[trace.TracerProvider](c, observability.NewDefaultTracerProvider)
 
-	// register redis
-	ioc.RegisterSingleton[*goredislib.Client](c, persistence.NewRedisClient)
-	ioc.RegisterSingleton[persistence.SharedPersistentState](c, persistence.NewRedisStateConnector)
-
-	// register nats connection
-	ioc.RegisterSingleton[*nats.Conn](c, persistence.NewNatsConn)
-
-	// register nats consumer group
-	ioc.RegisterSingleton[persistence.Consumer](c, persistence.NewNatsConsumer)
-
-	// register nats producer
-	ioc.RegisterSingleton[persistence.Emitter](c, persistence.NewNatsEmitter)
+	// register etcd
+	ioc.RegisterSingleton[*etcd.Client](c, persistence.NewEtcdClient)
 
 	// register shared state
-	ioc.RegisterSingleton[persistence.SharedPersistentEmittedState](c, persistence.NewSharedPersistentEmittedState)
+	ioc.RegisterSingleton[persistence.State](c, persistence.NewEtcdState)
 
 	// register services
 	ioc.RegisterSingleton[service.ExhibitService](c, service.NewExhibitService)

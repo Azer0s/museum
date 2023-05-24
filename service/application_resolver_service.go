@@ -1,6 +1,7 @@
 package service
 
 import (
+	"museum/persistence"
 	"museum/service/impl"
 	service "museum/service/interface"
 	"museum/util/cache"
@@ -8,9 +9,9 @@ import (
 
 type ApplicationResolverService service.ApplicationResolverService
 
-func NewDockerHostApplicationResolverService(exhibitService ExhibitService) ApplicationResolverService {
+func NewDockerHostApplicationResolverService(state persistence.State) ApplicationResolverService {
 	return &impl.DockerHostApplicationResolverService{
-		ExhibitService: exhibitService,
-		IpCache:        cache.NewLRU[string, string](1000),
+		State:   state,
+		IpCache: cache.NewLRU[string, string](1000),
 	}
 }

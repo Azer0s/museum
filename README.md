@@ -5,17 +5,15 @@ The fast, easy to use proxy server for your old web applications
 mūsēum (/muːˈseː.um/) is a project from the University of Vienna to provide researchers with a simple way to archive and access old web applications. Often, in the course of a research project, web applications are created to provide a user interface for data collection or analysis or simply to share ones research. These applications are often developed quickly and with little regard for long-term maintenance. As a result, they are often difficult to access and maintain. mūsēum provides a simple way to archive and access these applications.
 
 ## How does it work?
-mūsēum is fully distributed by design. Under the hood, it uses Redis to store information on running applications and NATS to communicate between different mūsēum instances. Whenever there is a request for a specific application, mūsēum will check if the application is running within the Docker Swarm. If it is, it will forward the request to the application. If it is not, it will start the application, display a loading screen and forward the request to the application once it is ready. 
+mūsēum is fully distributed by design. Under the hood, it uses etcd to store information on running applications (which also makes mūsēum distributed). Whenever there is a request for a specific application, mūsēum will check if the application is running within the Docker Swarm. If it is, it will forward the request to the application. If it is not, it will start the application, display a loading screen and forward the request to the application once it is ready. 
 
 Every application has to take out a "lease" on the application name. This lease is valid for a certain amount of time. If the application does not renew the lease (this is done every time mūsēum receives a request for the application), it will be removed from the Cluster. This ensures that applications that are not used for a long time will be removed from the Swarm.
 
 ## How do I use it?
 mūsēum is available as a Docker image. You can find the image on Docker Hub. To run mūsēum, you need to provide the following environment variables:
 
-* `NATS_HOST`: The address of the NATS instance
-* `NATS_SUBJECT`: The NATS subject to use (optional, defaults to `museum`)
-* `REDIS_HOST`: The address of the Redis instance
-* `REDIS_BASE_KEY`: The base key to use for Redis (optional, defaults to `museum`)
+* `ETCD_HOST`: The address of the etcd instance
+* `ETCD_BASE_KEY`: The base key to use for etcd (optional, defaults to `museum`)
 * `DOCKER_HOST`: The address of the Docker Swarm (optional, defaults to `unix:///var/run/docker.sock`)
 * `HOSTNAME`: The hostname of the mūsēum instance (optional, defaults to `localhost`)
 * `PORT`: The port to listen on (optional, defaults to `8080`)
@@ -34,8 +32,7 @@ services:
   museum:
     image: museum:latest
     environment:
-      NATS_HOST: nats
-      REDIS_HOST: redis
+      ETCD_HOST: etcd
       DOCKER_HOST: unix:///var/run/docker.sock
       PROXY_MODE: swarm
       # PROXY_MODE: dind # if you want to use Docker in Docker
@@ -46,49 +43,14 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - nats
-      - redis
-  nats:
-    image: nats:2.1.9
-  redis:
-    image: redis:6.0.5
-```
-
-### Kubernetes manifest (WIP ⚠️)
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: museum
-  labels:
-    app: museum
-spec:
-    replicas: 1
-    selector:
-        matchLabels:
-        app: museum
-    template:
-        metadata:
-        labels:
-            app: museum
-        spec:
-        containers:
-          - image: museum:latest
-            name: museum
-            env:
-                - NATS_HOST: nats
-                - REDIS_HOST: redis
-                - PROXY_MODE: kubernetes
-                - KUBERNETES_API_URL: https://kubernetes.default.svc.cluster.local
-                - KUBECONFIG: /root/.kube/config
-                - HOSTNAME: museum
-            ports:
-                - containerPort: 8080
-            volumeMounts:
-              - name: kubeconfig
-                mountPath: /root/.kube/config
-                readOnly: true
+      - etcd
+  etcd:
+    image: bitnami/etcd:latest
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+    ports:
+      - 2379:2379
 ```
 
 ## Exhibits

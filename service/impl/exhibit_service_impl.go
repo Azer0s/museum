@@ -10,21 +10,13 @@ import (
 )
 
 type ExhibitServiceImpl struct {
-	State    persistence.SharedPersistentEmittedState
+	State    persistence.State
 	Provider trace.TracerProvider
-}
-
-func (e ExhibitServiceImpl) GetExhibits() []domain.Exhibit {
-	return e.State.GetExhibits()
-}
-
-func (e ExhibitServiceImpl) GetExhibitById(id string) (*domain.Exhibit, error) {
-	return e.State.GetExhibitById(id)
 }
 
 func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequest domain.CreateExhibit) (string, error) {
 	// check that exhibit name is unique
-	exhibits := e.State.GetExhibits()
+	exhibits := e.State.GetAllExhibits(ctx)
 	for _, e := range exhibits {
 		if e.Name == createExhibitRequest.Exhibit.Name {
 			return "", errors.New("exhibit with name " + createExhibitRequest.Exhibit.Name + " already exists")
@@ -68,7 +60,7 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 		Start(ctx, "handleCreateExhibit")
 	defer span.End()
 
-	err := e.State.AddExhibit(subCtx, createExhibitRequest)
+	err := e.State.CreateExhibit(subCtx, createExhibitRequest.Exhibit)
 	if err != nil {
 		return "", err
 	}

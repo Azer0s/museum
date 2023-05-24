@@ -1,34 +1,22 @@
 package persistence
 
 import (
-	"context"
-	"github.com/nats-io/nats.go"
-	goredislib "github.com/redis/go-redis/v9"
+	"go.etcd.io/etcd/client/v3"
 	"go.uber.org/zap"
 	"museum/config"
+	"time"
 )
 
-func NewRedisClient(config config.Config, log *zap.SugaredLogger) *goredislib.Client {
-	redisClient := goredislib.NewClient(&goredislib.Options{
-		Addr: config.GetRedisHost(),
+func NewEtcdClient(config config.Config, log *zap.SugaredLogger) *clientv3.Client {
+	client, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{config.GetEtcdHost()},
+		DialTimeout: 5 * time.Second,
 	})
-
-	if _, err := redisClient.Ping(context.Background()).Result(); err != nil {
-		log.Panicw("error connecting to redis", "error", err)
-	}
-
-	log.Debugw("connected to redis", "host", config.GetRedisHost())
-
-	return redisClient
-}
-
-func NewNatsConn(config config.Config, log *zap.SugaredLogger) *nats.Conn {
-	nc, err := nats.Connect(config.GetNatsHost())
 	if err != nil {
-		log.Panicw("error connecting to nats", "error", err)
+		log.Panicw("error connecting to etcd", "error", err)
 	}
 
-	log.Debugw("connected to nats", "host", config.GetNatsHost())
+	log.Debugw("connected to etcd", "host", config.GetEtcdHost())
 
-	return nc
+	return client
 }

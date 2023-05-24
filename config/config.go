@@ -1,10 +1,8 @@
 package config
 
 type Config interface {
-	GetNatsHost() string
-	GetNatsSubject() string
-	GetRedisHost() string
-	GetRedisBaseKey() string
+	GetEtcdHost() string
+	GetEtcdBaseKey() string
 	GetDockerHost() string
 	GetHostname() string
 	GetPort() string
