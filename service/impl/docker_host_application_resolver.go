@@ -4,19 +4,19 @@ import (
 	"context"
 	"errors"
 	"museum/domain"
-	"museum/persistence"
+	service "museum/service/interface"
 	"museum/util/cache"
 	"os/exec"
 	"strings"
 )
 
 type DockerHostApplicationResolverService struct {
-	State   persistence.State
-	IpCache *cache.LRU[string, string]
+	ExhibitService service.ExhibitService
+	IpCache        *cache.LRU[string, string]
 }
 
 func (d DockerHostApplicationResolverService) ResolveApplication(ctx context.Context, exhibitId string) (string, error) {
-	exhibit, err := d.State.GetExhibitById(ctx, exhibitId)
+	exhibit, err := d.ExhibitService.GetExhibitById(ctx, exhibitId)
 	if err != nil {
 		return "", err
 	}

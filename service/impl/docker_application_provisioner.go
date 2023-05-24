@@ -7,14 +7,13 @@ import (
 	"github.com/docker/docker/api/types/container"
 	docker "github.com/docker/docker/client"
 	"museum/domain"
-	"museum/persistence"
 	service "museum/service/interface"
 	"strconv"
 	"time"
 )
 
 type DockerApplicationProvisionerService struct {
-	State                   persistence.State
+	ExhibitService          service.ExhibitService
 	LivecheckFactoryService service.LivecheckFactoryService
 	Client                  *docker.Client
 }
@@ -116,8 +115,8 @@ func (d DockerApplicationProvisionerService) doLivecheck(exhibit domain.Exhibit,
 
 func (d DockerApplicationProvisionerService) StartApplication(ctx context.Context, exhibitId string) error {
 	//TODO: log and span
-	err := d.State.WithLock(ctx, exhibitId, func() error {
-		exhibit, err := d.State.GetExhibitById(ctx, exhibitId)
+	err := d.ExhibitService.WithLock(ctx, exhibitId, func() error {
+		exhibit, err := d.ExhibitService.GetExhibitById(ctx, exhibitId)
 		if err != nil {
 			return err
 		}
@@ -133,9 +132,8 @@ func (d DockerApplicationProvisionerService) StartApplication(ctx context.Contex
 
 		exhibit.RuntimeInfo.Status = domain.Starting
 		exhibit.RuntimeInfo.RelatedContainers = make([]string, 0)
-		exhibit.RuntimeInfo.LastAccessed = strconv.FormatInt(time.Now().UnixNano(), 10)
 
-		return d.State.UpdateExhibit(ctx, exhibit)
+		return d.ExhibitService.UpdateExhibit(ctx, exhibit)
 	})
 
 	if err != nil {
@@ -143,15 +141,15 @@ func (d DockerApplicationProvisionerService) StartApplication(ctx context.Contex
 		return err
 	}
 
-	return d.State.WithLock(ctx, exhibitId, func() error {
-		exhibit, err := d.State.GetExhibitById(ctx, exhibitId)
+	return d.ExhibitService.WithLock(ctx, exhibitId, func() error {
+		exhibit, err := d.ExhibitService.GetExhibitById(ctx, exhibitId)
 
 		err = d.startApplicationInsideLock(ctx, &exhibit)
 		if err != nil {
 			return err
 		}
 
-		return d.State.UpdateExhibit(ctx, exhibit)
+		return d.ExhibitService.UpdateExhibit(ctx, exhibit)
 	})
 }
 

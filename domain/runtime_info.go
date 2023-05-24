@@ -12,7 +12,7 @@ const (
 
 type ExhibitRuntimeInfo struct {
 	Status            Status   `json:"status"`
-	LastAccessed      string   `json:"last_accessed"`
 	Hostname          string   `json:"hostname"`
 	RelatedContainers []string `json:"related_containers"`
+	LastAccessed      int64    `json:"-"`
 }

@@ -10,7 +10,6 @@ import (
 	"museum/config"
 	"museum/domain"
 	"museum/http/router"
-	"museum/persistence"
 	service "museum/service/interface"
 	"net/http"
 	"text/template"
@@ -26,7 +25,7 @@ type LoadingPageTemplate struct {
 	ExhibitId string
 }
 
-func proxyHandler(state persistence.State, resolver service.ApplicationResolverService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, c config.Config, provider trace.TracerProvider) router.MuxHandlerFunc {
+func proxyHandler(exhibitService service.ExhibitService, resolver service.ApplicationResolverService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, c config.Config, provider trace.TracerProvider) router.MuxHandlerFunc {
 	tmpl, _ := template.New("loading").Parse(string(loadingPage))
 	//TODO: log everything
 
@@ -38,7 +37,7 @@ func proxyHandler(state persistence.State, resolver service.ApplicationResolverS
 			return
 		}
 
-		app, err := state.GetExhibitById(req.Context(), id)
+		app, err := exhibitService.GetExhibitById(req.Context(), id)
 		if err != nil {
 			log.Warnw("error getting exhibit", "error", err, "requestId", req.RequestID, "exhibitId", id)
 			res.WriteHeader(http.StatusInternalServerError)
@@ -53,7 +52,7 @@ func proxyHandler(state persistence.State, resolver service.ApplicationResolverS
 		}
 
 		// if the application is not running, start it and return the loading page
-		// if the state is starting, only return the loading page
+		// if the state is "starting", only return the loading page
 		if app.RuntimeInfo.Status != domain.Running {
 			log.Infow("application is not running, returning loading page", "requestId", req.RequestID, "status", app.RuntimeInfo.Status, "exhibitId", app.Id)
 
@@ -160,8 +159,16 @@ func proxyHandler(state persistence.State, resolver service.ApplicationResolverS
 			res.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+
+		go func() {
+			err := exhibitService.SetLastAccessed(context.Background(), id, time.Now().Unix())
+			if err != nil {
+				return
+			}
+			log.Debugw("finished proxy request", "requestId", req.RequestID, "exhibitId", app.Id)
+		}()
 	}
 }
-func RegisterRoutes(r *router.Mux, state persistence.State, resolver service.ApplicationResolverService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, config config.Config, provider trace.TracerProvider) {
-	r.AddRoute(router.Get("/exhibit/{id}/>>", proxyHandler(state, resolver, provisioner, log, config, provider)))
+func RegisterRoutes(r *router.Mux, exhibitService service.ExhibitService, resolver service.ApplicationResolverService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, config config.Config, provider trace.TracerProvider) {
+	r.AddRoute(router.Get("/exhibit/{id}/>>", proxyHandler(exhibitService, resolver, provisioner, log, config, provider)))
 }

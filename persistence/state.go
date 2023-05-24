@@ -11,11 +11,12 @@ import (
 type State interface {
 	WithLock(ctx context.Context, id string, f func() error) (err error)
 
-	//CRUD methods
-
 	CreateExhibit(ctx context.Context, app domain.Exhibit) error
 	GetExhibitById(ctx context.Context, id string) (domain.Exhibit, error)
 	GetAllExhibits(ctx context.Context) []domain.Exhibit
 	UpdateExhibit(ctx context.Context, app domain.Exhibit) error
 	DeleteExhibitById(ctx context.Context, id string) error
+
+	GetLastAccessed(ctx context.Context, id string) (int64, error)
+	SetLastAccessed(ctx context.Context, id string, lastAccessed int64) error
 }

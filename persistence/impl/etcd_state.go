@@ -6,10 +6,12 @@ import (
 	"errors"
 	etcd "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"museum/config"
 	"museum/domain"
+	"strconv"
 	"strings"
 )
 
@@ -27,17 +29,64 @@ type EtcdState struct {
 	//this mutex will only be used for museum startup, so it should be fine
 }
 
-func (e EtcdState) WithLock(ctx context.Context, id string, f func() error) (err error) {
+func (e EtcdState) GetLastAccessed(ctx context.Context, id string) (int64, error) {
+	key := "/" + e.Config.GetEtcdBaseKey() + "/" + id + "/" + "last_accessed"
+
 	// create new trace span for event service
 	subCtx, span := e.Provider.
 		Tracer("etcd persistence").
-		Start(ctx, "WithLock")
+		Start(ctx, "GetLastAccessed", trace.WithAttributes(attribute.String("key", key), attribute.String("id", id)))
+	defer span.End()
+
+	span.AddEvent("searching for last_accessed time for exhibit")
+
+	resp, err := e.Client.Get(subCtx, key)
+	if err != nil {
+		return -1, err
+	}
+
+	span.AddEvent("found last_accessed time for exhibit")
+
+	i, err := strconv.ParseInt(string(resp.Kvs[0].Value), 10, 64)
+	if err != nil {
+		return -1, err
+	}
+
+	return i, nil
+}
+
+func (e EtcdState) SetLastAccessed(ctx context.Context, id string, lastAccessed int64) error {
+	key := "/" + e.Config.GetEtcdBaseKey() + "/" + id + "/" + "last_accessed"
+
+	// create new trace span for event service
+	subCtx, span := e.Provider.
+		Tracer("etcd persistence").
+		Start(ctx, "SetLastAccessed", trace.WithAttributes(attribute.String("key", key), attribute.String("id", id)))
+	defer span.End()
+
+	_, err := e.Client.Put(subCtx, key, strconv.FormatInt(lastAccessed, 10))
+	if err != nil {
+		return err
+	}
+
+	span.AddEvent("set last_accessed time for exhibit")
+
+	return nil
+}
+
+func (e EtcdState) WithLock(ctx context.Context, id string, f func() error) (err error) {
+	key := "/" + e.Config.GetEtcdBaseKey() + "/" + id + "/" + "lock"
+
+	// create new trace span for event service
+	subCtx, span := e.Provider.
+		Tracer("etcd persistence").
+		Start(ctx, "WithLock", trace.WithAttributes(attribute.String("key", key), attribute.String("id", id)))
 	defer span.End()
 
 	span.AddEvent("acquiring lock")
 
 	// create lock
-	lock := concurrency.NewMutex(e.Session, "/"+e.Config.GetEtcdBaseKey()+"/"+id+"/"+"lock")
+	lock := concurrency.NewMutex(e.Session, key)
 	err = lock.Lock(subCtx)
 	if err != nil {
 		return
@@ -69,7 +118,7 @@ func (e EtcdState) CreateExhibit(ctx context.Context, app domain.Exhibit) error 
 	// create new trace span for event service
 	subCtx, span := e.Provider.
 		Tracer("etcd persistence").
-		Start(ctx, "CreateExhibit")
+		Start(ctx, "CreateExhibit", trace.WithAttributes(attribute.String("key", key), attribute.String("id", app.Id)))
 	defer span.End()
 
 	span.AddEvent("checked if exhibit already exists")
@@ -105,7 +154,7 @@ func (e EtcdState) GetExhibitById(ctx context.Context, id string) (domain.Exhibi
 	// create new trace span for event service
 	subCtx, span := e.Provider.
 		Tracer("etcd persistence").
-		Start(ctx, "GetExhibitById")
+		Start(ctx, "GetExhibitById", trace.WithAttributes(attribute.String("key", key), attribute.String("id", id)))
 	defer span.End()
 
 	span.AddEvent("searching for exhibit")
@@ -131,7 +180,7 @@ func (e EtcdState) GetAllExhibits(ctx context.Context) []domain.Exhibit {
 	// create new trace span for event service
 	subCtx, span := e.Provider.
 		Tracer("etcd persistence").
-		Start(ctx, "GetAllExhibits")
+		Start(ctx, "GetAllExhibits", trace.WithAttributes(attribute.String("key", searchKey)))
 	defer span.End()
 
 	span.AddEvent("searching for exhibits")
@@ -166,7 +215,7 @@ func (e EtcdState) UpdateExhibit(ctx context.Context, app domain.Exhibit) error 
 	// create new trace span for event service
 	subCtx, span := e.Provider.
 		Tracer("etcd persistence").
-		Start(ctx, "UpdateExhibit")
+		Start(ctx, "UpdateExhibit", trace.WithAttributes(attribute.String("key", key), attribute.String("id", app.Id)))
 	defer span.End()
 
 	b, err := json.Marshal(app)

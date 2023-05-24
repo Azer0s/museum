@@ -14,6 +14,58 @@ type ExhibitServiceImpl struct {
 	Provider trace.TracerProvider
 }
 
+func (e ExhibitServiceImpl) WithLock(ctx context.Context, id string, f func() error) (err error) {
+	return e.State.WithLock(ctx, id, f)
+}
+
+func (e ExhibitServiceImpl) GetExhibitById(ctx context.Context, id string) (domain.Exhibit, error) {
+	exhibit, err := e.State.GetExhibitById(ctx, id)
+	if err != nil {
+		return domain.Exhibit{}, err
+	}
+
+	//get last accessed
+	lastAccessed, err := e.State.GetLastAccessed(ctx, id)
+	if err != nil {
+		return domain.Exhibit{}, err
+	}
+
+	exhibit.RuntimeInfo.LastAccessed = lastAccessed
+
+	return exhibit, nil
+}
+
+func (e ExhibitServiceImpl) GetAllExhibits(ctx context.Context) []domain.Exhibit {
+	exhibits := e.State.GetAllExhibits(ctx)
+
+	//get last accessed
+	for i, exhibit := range exhibits {
+		lastAccessed, err := e.State.GetLastAccessed(ctx, exhibit.Id)
+		if err != nil {
+			continue
+		}
+		exhibits[i].RuntimeInfo.LastAccessed = lastAccessed
+	}
+
+	return exhibits
+}
+
+func (e ExhibitServiceImpl) UpdateExhibit(ctx context.Context, app domain.Exhibit) error {
+	return e.State.UpdateExhibit(ctx, app)
+}
+
+func (e ExhibitServiceImpl) DeleteExhibitById(ctx context.Context, id string) error {
+	return e.State.DeleteExhibitById(ctx, id)
+}
+
+func (e ExhibitServiceImpl) GetLastAccessed(ctx context.Context, id string) (int64, error) {
+	return e.State.GetLastAccessed(ctx, id)
+}
+
+func (e ExhibitServiceImpl) SetLastAccessed(ctx context.Context, id string, lastAccessed int64) error {
+	return e.State.SetLastAccessed(ctx, id, lastAccessed)
+}
+
 func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequest domain.CreateExhibit) (string, error) {
 	// check that exhibit name is unique
 	exhibits := e.State.GetAllExhibits(ctx)
@@ -60,7 +112,12 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 		Start(ctx, "handleCreateExhibit")
 	defer span.End()
 
-	err := e.State.CreateExhibit(subCtx, createExhibitRequest.Exhibit)
+	err := e.State.SetLastAccessed(subCtx, createExhibitRequest.Exhibit.Id, 0)
+	if err != nil {
+		return "", err
+	}
+
+	err = e.State.CreateExhibit(subCtx, createExhibitRequest.Exhibit)
 	if err != nil {
 		return "", err
 	}

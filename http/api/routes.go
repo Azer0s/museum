@@ -9,19 +9,18 @@ import (
 	"io"
 	"museum/domain"
 	"museum/http/router"
-	"museum/persistence"
 	"museum/service"
 	"net/http"
 )
 
-func getExhibits(state persistence.State, log *zap.SugaredLogger, provider trace.TracerProvider) router.MuxHandlerFunc {
+func getExhibits(exhibitService service.ExhibitService, log *zap.SugaredLogger, provider trace.TracerProvider) router.MuxHandlerFunc {
 	return func(res *router.Response, req *router.Request) {
 		subCtx, span := provider.
 			Tracer("API request").
 			Start(req.Context(), "HTTP GET /exhibits/", trace.WithAttributes(attribute.String("requestId", req.RequestID)))
 		defer span.End()
 
-		exhibits := state.GetAllExhibits(subCtx)
+		exhibits := exhibitService.GetAllExhibits(subCtx)
 		err := res.WriteJson(exhibits)
 		if err != nil {
 			log.Warnw("error writing json", "error", err, "requestId", req.RequestID)
@@ -30,7 +29,7 @@ func getExhibits(state persistence.State, log *zap.SugaredLogger, provider trace
 	}
 }
 
-func getExhibitById(state persistence.State, log *zap.SugaredLogger, provider trace.TracerProvider) router.MuxHandlerFunc {
+func getExhibitById(exhibitService service.ExhibitService, log *zap.SugaredLogger, provider trace.TracerProvider) router.MuxHandlerFunc {
 	return func(res *router.Response, req *router.Request) {
 		subCtx, span := provider.
 			Tracer("API request").
@@ -38,7 +37,7 @@ func getExhibitById(state persistence.State, log *zap.SugaredLogger, provider tr
 		defer span.End()
 
 		exhibitId := req.Params["id"]
-		exhibit, err := state.GetExhibitById(subCtx, exhibitId)
+		exhibit, err := exhibitService.GetExhibitById(subCtx, exhibitId)
 		if err != nil {
 			res.WriteErr(err)
 			res.WriteHeader(http.StatusNotFound)
@@ -141,9 +140,9 @@ func handleEvents(handlerService service.ApplicationProvisionerHandlerService, l
 	}
 }
 
-func RegisterRoutes(r *router.Mux, exhibitService service.ExhibitService, provisionerHandlerService service.ApplicationProvisionerHandlerService, state persistence.State, log *zap.SugaredLogger, provider trace.TracerProvider) {
-	r.AddRoute(router.Get("/api/exhibits", getExhibits(state, log, provider)))
-	r.AddRoute(router.Get("/api/exhibits/{id}", getExhibitById(state, log, provider)))
+func RegisterRoutes(r *router.Mux, exhibitService service.ExhibitService, provisionerHandlerService service.ApplicationProvisionerHandlerService, log *zap.SugaredLogger, provider trace.TracerProvider) {
+	r.AddRoute(router.Get("/api/exhibits", getExhibits(exhibitService, log, provider)))
+	r.AddRoute(router.Get("/api/exhibits/{id}", getExhibitById(exhibitService, log, provider)))
 	r.AddRoute(router.Post("/api/exhibits", createExhibit(exhibitService, log, provider)))
 	r.AddRoute(router.Post("/api/events", handleEvents(provisionerHandlerService, log, provider)))
 }
