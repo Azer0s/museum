@@ -2,16 +2,20 @@ package service
 
 import (
 	docker "github.com/docker/docker/client"
+	"go.uber.org/zap"
 	"museum/service/impl"
 	service "museum/service/interface"
 )
 
 type ApplicationProvisionerService service.ApplicationProvisionerService
 
-func NewDockerApplicationProvisionerService(client *docker.Client, exhibitService service.ExhibitService, livecheckFactoryService LivecheckFactoryService) ApplicationProvisionerService {
+func NewDockerApplicationProvisionerService(client *docker.Client, exhibitService service.ExhibitService, runtimeInfoService service.RuntimeInfoService, lockService service.LockService, livecheckFactoryService LivecheckFactoryService, log *zap.SugaredLogger) ApplicationProvisionerService {
 	return &impl.DockerApplicationProvisionerService{
 		ExhibitService:          exhibitService,
 		LivecheckFactoryService: livecheckFactoryService,
 		Client:                  client,
+		LockService:             lockService,
+		RuntimeInfoService:      runtimeInfoService,
+		Log:                     log,
 	}
 }

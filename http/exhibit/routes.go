@@ -25,7 +25,7 @@ type LoadingPageTemplate struct {
 	ExhibitId string
 }
 
-func proxyHandler(exhibitService service.ExhibitService, resolver service.ApplicationResolverService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, c config.Config, provider trace.TracerProvider) router.MuxHandlerFunc {
+func proxyHandler(exhibitService service.ExhibitService, lastAccessedService service.LastAccessedService, resolver service.ApplicationResolverService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, c config.Config, provider trace.TracerProvider) router.MuxHandlerFunc {
 	tmpl, _ := template.New("loading").Parse(string(loadingPage))
 	//TODO: log everything
 
@@ -161,7 +161,7 @@ func proxyHandler(exhibitService service.ExhibitService, resolver service.Applic
 		}
 
 		go func() {
-			err := exhibitService.SetLastAccessed(context.Background(), id, time.Now().Unix())
+			err := lastAccessedService.SetLastAccessed(context.Background(), id, time.Now().Unix())
 			if err != nil {
 				return
 			}
@@ -169,6 +169,6 @@ func proxyHandler(exhibitService service.ExhibitService, resolver service.Applic
 		}()
 	}
 }
-func RegisterRoutes(r *router.Mux, exhibitService service.ExhibitService, resolver service.ApplicationResolverService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, config config.Config, provider trace.TracerProvider) {
-	r.AddRoute(router.Get("/exhibit/{id}/>>", proxyHandler(exhibitService, resolver, provisioner, log, config, provider)))
+func RegisterRoutes(r *router.Mux, exhibitService service.ExhibitService, lastAccessedService service.LastAccessedService, resolver service.ApplicationResolverService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, config config.Config, provider trace.TracerProvider) {
+	r.AddRoute(router.Get("/exhibit/{id}/>>", proxyHandler(exhibitService, lastAccessedService, resolver, provisioner, log, config, provider)))
 }

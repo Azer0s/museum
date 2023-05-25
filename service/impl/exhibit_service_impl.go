@@ -7,66 +7,130 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"museum/domain"
 	"museum/persistence"
+	service "museum/service/interface"
+	"museum/util"
 )
 
 type ExhibitServiceImpl struct {
-	State    persistence.State
-	Provider trace.TracerProvider
-}
-
-func (e ExhibitServiceImpl) WithLock(ctx context.Context, id string, f func() error) (err error) {
-	return e.State.WithLock(ctx, id, f)
+	State       persistence.State
+	Provider    trace.TracerProvider
+	LockService service.LockService
 }
 
 func (e ExhibitServiceImpl) GetExhibitById(ctx context.Context, id string) (domain.Exhibit, error) {
+	globalLock := e.LockService.GetRwLock(ctx, "all", "exhibits")
+	err := globalLock.RLock()
+	if err != nil {
+		return domain.Exhibit{}, err
+	}
+	defer func(globalLock util.RwErrMutex) {
+		err := globalLock.RUnlock()
+		if err != nil {
+
+		}
+	}(globalLock)
+
+	lock := e.LockService.GetRwLock(ctx, id, "exhibit")
+	err = lock.RLock()
+	if err != nil {
+		return domain.Exhibit{}, err
+	}
+	defer func(lock util.RwErrMutex) {
+		err := lock.RUnlock()
+		if err != nil {
+			//TODO: log error
+		}
+	}(lock)
+
 	exhibit, err := e.State.GetExhibitById(ctx, id)
 	if err != nil {
 		return domain.Exhibit{}, err
 	}
+
+	d, err := e.hydrateExhibit(ctx, id, &exhibit)
+	if err != nil {
+		return d, err
+	}
+
+	return exhibit, nil
+}
+
+func (e ExhibitServiceImpl) hydrateExhibit(ctx context.Context, id string, exhibit *domain.Exhibit) (domain.Exhibit, error) {
+	//get runtime info
+	runtimeInfo, err := e.State.GetRuntimeInfo(ctx, id)
+	if err != nil {
+		return domain.Exhibit{}, err
+	}
+	exhibit.RuntimeInfo = &runtimeInfo
 
 	//get last accessed
 	lastAccessed, err := e.State.GetLastAccessed(ctx, id)
 	if err != nil {
 		return domain.Exhibit{}, err
 	}
-
 	exhibit.RuntimeInfo.LastAccessed = lastAccessed
 
-	return exhibit, nil
+	return domain.Exhibit{}, nil
 }
 
 func (e ExhibitServiceImpl) GetAllExhibits(ctx context.Context) []domain.Exhibit {
+	lock := e.LockService.GetRwLock(ctx, "all", "exhibits")
+	err := lock.Lock()
+	if err != nil {
+		return nil
+	}
+	defer func(lock util.RwErrMutex) {
+		err := lock.Unlock()
+		if err != nil {
+			//TODO: log error
+		}
+	}(lock)
+
 	exhibits := e.State.GetAllExhibits(ctx)
 
-	//get last accessed
 	for i, exhibit := range exhibits {
-		lastAccessed, err := e.State.GetLastAccessed(ctx, exhibit.Id)
+		d, err := e.hydrateExhibit(ctx, exhibit.Id, &exhibit)
 		if err != nil {
 			continue
 		}
-		exhibits[i].RuntimeInfo.LastAccessed = lastAccessed
+		exhibits[i] = d
 	}
 
 	return exhibits
 }
 
-func (e ExhibitServiceImpl) UpdateExhibit(ctx context.Context, app domain.Exhibit) error {
-	return e.State.UpdateExhibit(ctx, app)
-}
-
 func (e ExhibitServiceImpl) DeleteExhibitById(ctx context.Context, id string) error {
+	lock := e.LockService.GetRwLock(ctx, id, "exhibit")
+	err := lock.Lock()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err := lock.Unlock()
+		if err != nil {
+			//TODO: log error
+		}
+		// TODO: delete lock
+	}()
+
+	//stop exhibit if running
+
 	return e.State.DeleteExhibitById(ctx, id)
 }
 
-func (e ExhibitServiceImpl) GetLastAccessed(ctx context.Context, id string) (int64, error) {
-	return e.State.GetLastAccessed(ctx, id)
-}
-
-func (e ExhibitServiceImpl) SetLastAccessed(ctx context.Context, id string, lastAccessed int64) error {
-	return e.State.SetLastAccessed(ctx, id, lastAccessed)
-}
-
 func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequest domain.CreateExhibit) (string, error) {
+	globalLock := e.LockService.GetRwLock(ctx, "all", "exhibits")
+	err := globalLock.Lock()
+	if err != nil {
+		return "", err
+	}
+	defer func(globalLock util.RwErrMutex) {
+		err := globalLock.Unlock()
+		if err != nil {
+			//TODO: log error
+		}
+	}(globalLock)
+
 	// check that exhibit name is unique
 	exhibits := e.State.GetAllExhibits(ctx)
 	for _, e := range exhibits {
@@ -112,13 +176,20 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 		Start(ctx, "handleCreateExhibit")
 	defer span.End()
 
-	err := e.State.SetLastAccessed(subCtx, createExhibitRequest.Exhibit.Id, 0)
+	err = e.State.SetLastAccessed(subCtx, createExhibitRequest.Exhibit.Id, 0)
 	if err != nil {
+		return "", err
+	}
+
+	err = e.State.SetRuntimeInfo(subCtx, createExhibitRequest.Exhibit.Id, *createExhibitRequest.Exhibit.RuntimeInfo)
+	if err != nil {
+		//TODO: delete last accessed
 		return "", err
 	}
 
 	err = e.State.CreateExhibit(subCtx, createExhibitRequest.Exhibit)
 	if err != nil {
+		//TODO: delete last accessed and runtime info
 		return "", err
 	}
 

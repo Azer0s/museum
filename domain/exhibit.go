@@ -7,5 +7,13 @@ type Exhibit struct {
 	Objects     []Object            `json:"objects" yaml:"objects"`
 	Lease       string              `json:"lease" yaml:"lease"`
 	Order       []string            `json:"order" yaml:"order"`
-	RuntimeInfo *ExhibitRuntimeInfo `json:"runtime_info"`
+	RuntimeInfo *ExhibitRuntimeInfo `json:"-"`
+}
+
+func (e Exhibit) ToDto() ExhibitDto {
+	return ExhibitDto{
+		Id:          e.Id,
+		Name:        e.Name,
+		RuntimeInfo: e.RuntimeInfo,
+	}
 }

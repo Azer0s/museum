@@ -45,7 +45,10 @@ func Run() {
 	ioc.RegisterSingleton[persistence.State](c, persistence.NewEtcdState)
 
 	// register services
+	ioc.RegisterSingleton[service.LockService](c, service.NewLockService)
 	ioc.RegisterSingleton[service.ExhibitService](c, service.NewExhibitService)
+	ioc.RegisterSingleton[service.LastAccessedService](c, service.NewLastAccessedService)
+	ioc.RegisterSingleton[service.RuntimeInfoService](c, service.NewRuntimeInfoService)
 	ioc.RegisterSingleton[service.ApplicationResolverService](c, service.NewDockerHostApplicationResolverService)
 
 	// register livecheck

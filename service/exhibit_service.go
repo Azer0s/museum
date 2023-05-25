@@ -9,9 +9,10 @@ import (
 
 type ExhibitService service.ExhibitService
 
-func NewExhibitService(state persistence.State, provider trace.TracerProvider) ExhibitService {
+func NewExhibitService(state persistence.State, lockService service.LockService, provider trace.TracerProvider) ExhibitService {
 	return &impl.ExhibitServiceImpl{
-		State:    state,
-		Provider: provider,
+		State:       state,
+		Provider:    provider,
+		LockService: lockService,
 	}
 }

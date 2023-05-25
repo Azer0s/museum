@@ -21,6 +21,12 @@ func getExhibits(exhibitService service.ExhibitService, log *zap.SugaredLogger, 
 		defer span.End()
 
 		exhibits := exhibitService.GetAllExhibits(subCtx)
+		dtos := make([]domain.ExhibitDto, len(exhibits))
+
+		for i, exhibit := range exhibits {
+			dtos[i] = exhibit.ToDto()
+		}
+
 		err := res.WriteJson(exhibits)
 		if err != nil {
 			log.Warnw("error writing json", "error", err, "requestId", req.RequestID)
@@ -44,7 +50,7 @@ func getExhibitById(exhibitService service.ExhibitService, log *zap.SugaredLogge
 			return
 		}
 
-		err = res.WriteJson(exhibit)
+		err = res.WriteJson(exhibit.ToDto())
 		if err != nil {
 			log.Warnw("error writing json", "error", err, "requestId", req.RequestID)
 			res.WriteErr(err)
