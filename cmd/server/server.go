@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	docker "github.com/docker/docker/client"
 	etcd "go.etcd.io/etcd/client/v3"
@@ -16,12 +17,17 @@ import (
 	"museum/observability"
 	"museum/persistence"
 	"museum/service"
-	"museum/service/impl"
-	"museum/util"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 func Run() {
+	ctx := context.Background()
+	signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGKILL, syscall.SIGSTOP)
+
 	c := ioc.NewContainer()
 
 	// register logger
@@ -52,13 +58,9 @@ func Run() {
 	ioc.RegisterSingleton[service.ApplicationResolverService](c, service.NewDockerHostApplicationResolverService)
 
 	// register livecheck
-	ioc.RegisterSingleton[*impl.HttpLivecheck](c, func(resolverService service.ApplicationResolverService) *impl.HttpLivecheck {
-		return &impl.HttpLivecheck{
-			ApplicationResolverService: resolverService,
-		}
-	})
-	ioc.RegisterSingleton[*impl.ExecLivecheck](c, util.IdentityF(new(impl.ExecLivecheck)))
-	ioc.RegisterSingleton[service.LivecheckFactoryService](c, util.IdentityF(ioc.ForStruct[impl.LivecheckFactoryServiceImpl](c)))
+	ioc.RegisterSingleton[*service.HttpLivecheck](c, service.NewHttpLivecheck)
+	ioc.RegisterSingleton[*service.ExecLivecheck](c, service.NewExecLivecheck)
+	ioc.RegisterSingleton[service.LivecheckFactoryService](c, service.NewLivecheckFactoryService)
 
 	// register services
 	ioc.RegisterSingleton[service.ApplicationProvisionerService](c, service.NewDockerApplicationProvisionerService)
@@ -70,16 +72,21 @@ func Run() {
 	ioc.ForFunc(c, exhibit.RegisterRoutes)
 	ioc.ForFunc(c, api.RegisterRoutes)
 
-	//TODO: start cron goroutine to check for expired exhibits
-
-	ioc.ForFunc(c, func(router *router.Mux, config config.Config, log *zap.SugaredLogger) {
-		log.Infof("Starting server on port %s", config.GetPort())
+	go ioc.ForFunc(c, func(router *router.Mux, config config.Config, log *zap.SugaredLogger) {
+		log.Infof("starting server on port %s", config.GetPort())
 		err := http.ListenAndServe(fmt.Sprintf(":%s", config.GetPort()), router)
 		if err != nil {
 			panic(err)
 		}
 	})
 
-	graph := ioc.GenerateDependencyGraph(c)
-	fmt.Println(graph)
+	go ioc.ForFunc(c, func(log *zap.SugaredLogger) {
+		for {
+			log.Info("checking for expired exhibits")
+			// TODO: repeatedly check for expired exhibits and stop them
+			<-time.After(10 * time.Second)
+		}
+	})
+
+	<-ctx.Done()
 }

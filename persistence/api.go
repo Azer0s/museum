@@ -18,7 +18,7 @@ func NewEtcdState(config config.Config, etcdClient *etcd.Client, providerFactory
 	return &impl.EtcdState{
 		Client:   etcdClient,
 		Config:   config,
-		Provider: providerFactory.Build("persistence"),
+		Provider: providerFactory.Build("etcd"),
 		Session:  session,
 		Log:      log,
 	}

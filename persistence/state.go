@@ -19,7 +19,9 @@ type State interface {
 
 	SetRuntimeInfo(ctx context.Context, id string, runtimeInfo domain.ExhibitRuntimeInfo) error
 	GetRuntimeInfo(ctx context.Context, id string) (domain.ExhibitRuntimeInfo, error)
+	DeleteRuntimeInfo(ctx context.Context, id string) error
 
 	GetLastAccessed(ctx context.Context, id string) (int64, error)
 	SetLastAccessed(ctx context.Context, id string, lastAccessed int64) error
+	DeleteLastAccessed(ctx context.Context, id string) error
 }

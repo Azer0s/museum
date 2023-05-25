@@ -58,7 +58,7 @@ func proxyHandler(exhibitService service.ExhibitService, lastAccessedService ser
 
 			ctx, span := provider.
 				Tracer("API request to non-running application").
-				Start(req.Context(), "HTTP "+req.Method+" "+req.URL.Path, trace.WithAttributes(attribute.String("requestId", req.RequestID), attribute.String("exhibitId", app.Id)))
+				Start(context.Background(), "HTTP "+req.Method+" "+req.URL.Path, trace.WithAttributes(attribute.String("requestId", req.RequestID), attribute.String("exhibitId", app.Id)))
 			defer span.End()
 
 			// if the application is not starting, start it
@@ -72,12 +72,14 @@ func proxyHandler(exhibitService service.ExhibitService, lastAccessedService ser
 			if app.RuntimeInfo.Status != domain.Starting {
 				log.Infow("starting application", "requestId", req.RequestID, "exhibitId", app.Id)
 				go func() {
-					_, subSpan := provider.
-						Tracer("Starting application").
+					// create a new span for starting the application, the tracer should outlive the request
+					subCtx, subSpan := provider.
+						Tracer("Starting application"+app.Name+" ("+app.Id+")").
 						Start(ctx, "Starting application", trace.WithAttributes(attribute.String("requestId", req.RequestID), attribute.String("exhibitId", app.Id)))
+					defer subSpan.End()
 
 					subSpan.AddEvent("starting application")
-					err := provisioner.StartApplication(context.Background(), id)
+					err := provisioner.StartApplication(subCtx, id)
 					if err != nil {
 						log.Warnw("error starting application", "error", err, "requestId", req.RequestID, "exhibitId", app.Id)
 						return

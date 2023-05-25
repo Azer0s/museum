@@ -17,7 +17,7 @@ func getExhibits(exhibitService service.ExhibitService, log *zap.SugaredLogger, 
 	return func(res *router.Response, req *router.Request) {
 		subCtx, span := provider.
 			Tracer("API request").
-			Start(req.Context(), "HTTP GET /exhibits/", trace.WithAttributes(attribute.String("requestId", req.RequestID)))
+			Start(req.Context(), "HTTP GET /api/exhibits/", trace.WithAttributes(attribute.String("requestId", req.RequestID)))
 		defer span.End()
 
 		exhibits := exhibitService.GetAllExhibits(subCtx)
@@ -39,7 +39,7 @@ func getExhibitById(exhibitService service.ExhibitService, log *zap.SugaredLogge
 	return func(res *router.Response, req *router.Request) {
 		subCtx, span := provider.
 			Tracer("API request").
-			Start(req.Context(), "HTTP GET /exhibits/"+req.Params["id"], trace.WithAttributes(attribute.String("requestId", req.RequestID)))
+			Start(req.Context(), "HTTP GET /api/exhibits/"+req.Params["id"], trace.WithAttributes(attribute.String("requestId", req.RequestID)))
 		defer span.End()
 
 		exhibitId := req.Params["id"]

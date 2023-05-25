@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/trace"
+	"go.uber.org/zap"
 	"museum/domain"
 	"museum/persistence"
 	service "museum/service/interface"
@@ -15,30 +16,33 @@ type ExhibitServiceImpl struct {
 	State       persistence.State
 	Provider    trace.TracerProvider
 	LockService service.LockService
+	Log         *zap.SugaredLogger
 }
 
 func (e ExhibitServiceImpl) GetExhibitById(ctx context.Context, id string) (domain.Exhibit, error) {
 	globalLock := e.LockService.GetRwLock(ctx, "all", "exhibits")
 	err := globalLock.RLock()
 	if err != nil {
+		e.Log.Errorw("error locking global lock", "error", err)
 		return domain.Exhibit{}, err
 	}
 	defer func(globalLock util.RwErrMutex) {
 		err := globalLock.RUnlock()
 		if err != nil {
-
+			e.Log.Errorw("error unlocking global lock", "error", err)
 		}
 	}(globalLock)
 
 	lock := e.LockService.GetRwLock(ctx, id, "exhibit")
 	err = lock.RLock()
 	if err != nil {
+		e.Log.Errorw("error locking exhibit lock", "error", err, "exhibitId", id)
 		return domain.Exhibit{}, err
 	}
 	defer func(lock util.RwErrMutex) {
 		err := lock.RUnlock()
 		if err != nil {
-			//TODO: log error
+			e.Log.Errorw("error unlocking exhibit lock", "error", err, "exhibitId", id)
 		}
 	}(lock)
 
@@ -75,14 +79,15 @@ func (e ExhibitServiceImpl) hydrateExhibit(ctx context.Context, id string, exhib
 
 func (e ExhibitServiceImpl) GetAllExhibits(ctx context.Context) []domain.Exhibit {
 	lock := e.LockService.GetRwLock(ctx, "all", "exhibits")
-	err := lock.Lock()
+	err := lock.RLock()
 	if err != nil {
+		e.Log.Errorw("error locking global lock", "error", err)
 		return nil
 	}
 	defer func(lock util.RwErrMutex) {
-		err := lock.Unlock()
+		err = lock.RUnlock()
 		if err != nil {
-			//TODO: log error
+			e.Log.Errorw("error unlocking global lock", "error", err)
 		}
 	}(lock)
 
@@ -103,12 +108,13 @@ func (e ExhibitServiceImpl) DeleteExhibitById(ctx context.Context, id string) er
 	lock := e.LockService.GetRwLock(ctx, id, "exhibit")
 	err := lock.Lock()
 	if err != nil {
+		e.Log.Errorw("error locking exhibit lock", "error", err, "exhibitId", id)
 		return err
 	}
 	defer func() {
 		err := lock.Unlock()
 		if err != nil {
-			//TODO: log error
+			e.Log.Errorw("error unlocking exhibit lock", "error", err, "exhibitId", id)
 		}
 		// TODO: delete lock
 	}()
@@ -122,12 +128,13 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 	globalLock := e.LockService.GetRwLock(ctx, "all", "exhibits")
 	err := globalLock.Lock()
 	if err != nil {
+		e.Log.Errorw("error locking global lock", "error", err)
 		return "", err
 	}
 	defer func(globalLock util.RwErrMutex) {
 		err := globalLock.Unlock()
 		if err != nil {
-			//TODO: log error
+			e.Log.Errorw("error unlocking global lock", "error", err)
 		}
 	}(globalLock)
 
@@ -183,13 +190,14 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 
 	err = e.State.SetRuntimeInfo(subCtx, createExhibitRequest.Exhibit.Id, *createExhibitRequest.Exhibit.RuntimeInfo)
 	if err != nil {
-		//TODO: delete last accessed
+		err = e.State.DeleteLastAccessed(subCtx, createExhibitRequest.Exhibit.Id)
 		return "", err
 	}
 
 	err = e.State.CreateExhibit(subCtx, createExhibitRequest.Exhibit)
 	if err != nil {
-		//TODO: delete last accessed and runtime info
+		err = e.State.DeleteLastAccessed(subCtx, createExhibitRequest.Exhibit.Id)
+		err = e.State.DeleteRuntimeInfo(subCtx, createExhibitRequest.Exhibit.Id)
 		return "", err
 	}
 
