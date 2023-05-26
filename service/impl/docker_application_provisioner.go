@@ -22,6 +22,7 @@ type DockerApplicationProvisionerService struct {
 	Client                  *docker.Client
 	LockService             service.LockService
 	RuntimeInfoService      service.RuntimeInfoService
+	LastAccessedService     service.LastAccessedService
 	Log                     *zap.SugaredLogger
 	Provider                trace.TracerProvider
 }
@@ -66,25 +67,7 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 		if err == nil && inspect.ID != "" {
 			d.Log.Warnw("container already exists", "container", name, "exhibitId", exhibit.Id)
 
-			// container already exists, check if it's running
-			if inspect.State.Running {
-				span.AddEvent("stopping container")
-
-				d.Log.Warnw("container is running, stopping", "container", name, "exhibitId", exhibit.Id)
-
-				// stop container
-				err = d.Client.ContainerStop(ctx, inspect.ID, container.StopOptions{})
-				if err != nil {
-					return err
-				}
-			}
-
-			span.AddEvent("removing container")
-
-			d.Log.Debugw("removing container", "container", name, "exhibitId", exhibit.Id)
-
-			// remove container
-			err = d.Client.ContainerRemove(ctx, inspect.ID, types.ContainerRemoveOptions{})
+			err = d.doCleanup(inspect, exhibit, ctx)
 			if err != nil {
 				return err
 			}
@@ -127,6 +110,37 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 
 	exhibit.RuntimeInfo.Status = domain.Running
 
+	return nil
+}
+
+func (d DockerApplicationProvisionerService) doCleanup(inspect types.ContainerJSON, exhibit *domain.Exhibit, ctx context.Context) error {
+	subCtx, span := d.Provider.
+		Tracer("docker provisioner").
+		Start(ctx, "doCleanup("+inspect.Name+")", trace.WithAttributes(attribute.String("container", inspect.Name), attribute.String("exhibitId", exhibit.Id)))
+	defer span.End()
+
+	// container already exists, check if it's running
+	if inspect.State.Running {
+		span.AddEvent("stopping container")
+
+		d.Log.Warnw("container is running, stopping", "container", inspect.Name, "exhibitId", exhibit.Id)
+
+		// stop container
+		err := d.Client.ContainerStop(subCtx, inspect.ID, container.StopOptions{})
+		if err != nil {
+			return err
+		}
+	}
+
+	span.AddEvent("removing container")
+
+	d.Log.Debugw("removing container", "container", inspect.Name, "exhibitId", exhibit.Id)
+
+	// remove container
+	err := d.Client.ContainerRemove(subCtx, inspect.ID, types.ContainerRemoveOptions{})
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -210,6 +224,13 @@ func (d DockerApplicationProvisionerService) applicationStartingStep(ctx context
 		return err
 	}
 
+	span.AddEvent("exhibit status set to starting")
+
+	err = d.LastAccessedService.SetLastAccessed(subCtx, exhibitId, time.Now().Unix())
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -287,12 +308,179 @@ func (d DockerApplicationProvisionerService) StartApplication(ctx context.Contex
 	return nil
 }
 
-func (d DockerApplicationProvisionerService) StopApplication(ctx context.Context, exhibitId string) error {
-	//TODO implement me
-	panic("implement me")
+func (d DockerApplicationProvisionerService) applicationStoppingStep(ctx context.Context, exhibitId string) (err error) {
+	subCtx, span := d.Provider.
+		Tracer("docker provisioner").
+		Start(ctx, "applicationStoppingStep", trace.WithAttributes(attribute.String("exhibitId", exhibitId)))
+	defer span.End()
+
+	exhibit, err := d.ExhibitService.GetExhibitById(subCtx, exhibitId)
+	if err != nil {
+		return err
+	}
+
+	span.AddEvent("acquiring runtime_info lock")
+
+	lock := d.LockService.GetRwLock(subCtx, exhibitId, "runtime_info")
+	err = lock.Lock()
+	if err != nil {
+		return err
+	}
+
+	span.AddEvent("runtime_info lock acquired")
+
+	defer func(lock util.RwErrMutex) {
+		err = lock.Unlock()
+	}(lock)
+
+	span.AddEvent("checking exhibit status")
+
+	// check that exhibit is not already stopped after lock is acquired
+	if exhibit.RuntimeInfo.Status == domain.Stopped {
+		return nil
+	}
+
+	if exhibit.RuntimeInfo.Status != domain.Running {
+		return errors.New(string("cannot stop application in state " + exhibit.RuntimeInfo.Status))
+	}
+
+	span.AddEvent("setting exhibit status to stopping")
+
+	exhibit.RuntimeInfo.Status = domain.Stopping
+	err = d.RuntimeInfoService.SetRuntimeInfo(subCtx, exhibitId, *exhibit.RuntimeInfo)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (d DockerApplicationProvisionerService) CleanupApplication(ctx context.Context, exhibitId string) error {
-	//TODO implement me
-	panic("implement me")
+func (d DockerApplicationProvisionerService) applicationStoppedStep(ctx context.Context, exhibitId string) (err error) {
+	subCtx, span := d.Provider.
+		Tracer("docker provisioner").
+		Start(ctx, "applicationStoppedStep", trace.WithAttributes(attribute.String("exhibitId", exhibitId)))
+	defer span.End()
+
+	exhibit, err := d.ExhibitService.GetExhibitById(subCtx, exhibitId)
+	if err != nil {
+		return err
+	}
+
+	span.AddEvent("acquiring runtime_info lock")
+
+	lock := d.LockService.GetRwLock(subCtx, exhibitId, "runtime_info")
+	err = lock.Lock()
+	if err != nil {
+		return err
+	}
+
+	span.AddEvent("runtime_info lock acquired")
+
+	defer func(lock util.RwErrMutex) {
+		err = lock.Unlock()
+	}(lock)
+
+	for _, c := range exhibit.RuntimeInfo.RelatedContainers {
+		span.AddEvent("stopping container " + c)
+
+		err = d.Client.ContainerStop(subCtx, c, container.StopOptions{})
+		if docker.IsErrNotFound(err) {
+			span.AddEvent("container not found, skipping")
+			continue
+		}
+
+		if err != nil {
+			return err
+		}
+	}
+
+	span.AddEvent("setting exhibit status to stopped")
+
+	exhibit.RuntimeInfo.Status = domain.Stopped
+	err = d.RuntimeInfoService.SetRuntimeInfo(subCtx, exhibitId, *exhibit.RuntimeInfo)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (d DockerApplicationProvisionerService) StopApplication(ctx context.Context, exhibitId string) error {
+	subCtx, span := d.Provider.
+		Tracer("docker provisioner").
+		Start(ctx, "CleanupApplication", trace.WithAttributes(attribute.String("exhibitId", exhibitId)))
+	defer span.End()
+
+	err := d.applicationStoppingStep(subCtx, exhibitId)
+	if err != nil {
+		d.Log.Errorw("error stopping application", "exhibitId", exhibitId, "error", err)
+		return err
+	}
+
+	err = d.applicationStoppedStep(subCtx, exhibitId)
+	if err != nil {
+		d.Log.Errorw("error stopping application", "exhibitId", exhibitId, "error", err)
+		return err
+	}
+
+	return nil
+}
+
+func (d DockerApplicationProvisionerService) CleanupApplication(ctx context.Context, exhibitId string) (err error) {
+	subCtx, span := d.Provider.
+		Tracer("docker provisioner").
+		Start(ctx, "CleanupApplication", trace.WithAttributes(attribute.String("exhibitId", exhibitId)))
+	defer span.End()
+
+	exhibit, err := d.ExhibitService.GetExhibitById(subCtx, exhibitId)
+	if err != nil {
+		return err
+	}
+
+	span.AddEvent("acquiring runtime_info lock")
+
+	lock := d.LockService.GetRwLock(subCtx, exhibitId, "runtime_info")
+	err = lock.Lock()
+	if err != nil {
+		return err
+	}
+
+	span.AddEvent("runtime_info lock acquired")
+
+	defer func(lock util.RwErrMutex) {
+		err = lock.Unlock()
+	}(lock)
+
+	// check that exhibit is stopped+
+	if exhibit.RuntimeInfo.Status != domain.Stopped {
+		return errors.New(string("cannot cleanup application in state " + exhibit.RuntimeInfo.Status))
+	}
+
+	for _, containerId := range exhibit.RuntimeInfo.RelatedContainers {
+		inspect, err := d.Client.ContainerInspect(subCtx, containerId)
+		if docker.IsErrNotFound(err) {
+			span.AddEvent("container not found, skipping")
+			continue
+		}
+
+		if err != nil {
+			return err
+		}
+
+		err = d.doCleanup(inspect, &exhibit, subCtx)
+		if err != nil {
+			return err
+		}
+	}
+
+	span.AddEvent("reseting runtime_info")
+	exhibit.RuntimeInfo.RelatedContainers = make([]string, 0)
+	exhibit.RuntimeInfo.Hostname = ""
+
+	err = d.RuntimeInfoService.SetRuntimeInfo(subCtx, exhibitId, *exhibit.RuntimeInfo)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

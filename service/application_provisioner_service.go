@@ -10,13 +10,14 @@ import (
 
 type ApplicationProvisionerService service.ApplicationProvisionerService
 
-func NewDockerApplicationProvisionerService(client *docker.Client, exhibitService service.ExhibitService, runtimeInfoService service.RuntimeInfoService, lockService service.LockService, livecheckFactoryService LivecheckFactoryService, log *zap.SugaredLogger, providerFactory *observability.TracerProviderFactory) ApplicationProvisionerService {
+func NewDockerApplicationProvisionerService(client *docker.Client, exhibitService service.ExhibitService, runtimeInfoService service.RuntimeInfoService, lastAccessedService service.LastAccessedService, lockService service.LockService, livecheckFactoryService LivecheckFactoryService, log *zap.SugaredLogger, providerFactory *observability.TracerProviderFactory) ApplicationProvisionerService {
 	return &impl.DockerApplicationProvisionerService{
 		ExhibitService:          exhibitService,
 		LivecheckFactoryService: livecheckFactoryService,
 		Client:                  client,
 		LockService:             lockService,
 		RuntimeInfoService:      runtimeInfoService,
+		LastAccessedService:     lastAccessedService,
 		Log:                     log,
 		Provider:                providerFactory.Build("docker"),
 	}

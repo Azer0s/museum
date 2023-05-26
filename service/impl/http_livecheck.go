@@ -28,7 +28,6 @@ func (h *HttpLivecheck) Check(exhibit domain.Exhibit, object domain.Object) (ret
 		port = *object.Port
 	}
 
-	// TODO: check for valid method at exhibit creation time
 	method, ok := object.Livecheck.Config["method"]
 	if !ok {
 		method = "GET"
@@ -51,7 +50,6 @@ func (h *HttpLivecheck) Check(exhibit domain.Exhibit, object domain.Object) (ret
 		return
 	}
 
-	// TODO: check for valid status at exhibit creation time
 	statusStr, ok := object.Livecheck.Config["status"]
 	if !ok {
 		statusStr = "200"
