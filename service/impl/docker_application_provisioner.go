@@ -175,11 +175,15 @@ func (d DockerApplicationProvisionerService) applicationStartingStep(ctx context
 		return err
 	}
 
+	span.AddEvent("acquiring runtime_info lock")
+
 	lock := d.LockService.GetRwLock(subCtx, exhibitId, "runtime_info")
 	err = lock.Lock()
 	if err != nil {
 		return err
 	}
+
+	span.AddEvent("runtime_info lock acquired")
 
 	defer func(lock util.RwErrMutex) {
 		err = lock.Unlock()
@@ -215,12 +219,17 @@ func (d DockerApplicationProvisionerService) applicationRunningStep(ctx context.
 		Start(ctx, "applicationRunningStep", trace.WithAttributes(attribute.String("exhibitId", exhibitId)))
 	defer span.End()
 
+	span.AddEvent("acquiring runtime_info lock")
+
 	exhibitRlock := d.LockService.GetRwLock(subCtx, exhibitId, "exhibit")
 	err = exhibitRlock.RLock()
 	if err != nil {
 		d.Log.Errorw("error locking exhibit", "exhibitId", exhibitId, "error", err)
 		return err
 	}
+
+	span.AddEvent("exhibit lock acquired")
+
 	defer func(lock util.RwErrMutex) {
 		err = lock.RUnlock()
 	}(exhibitRlock)
@@ -230,11 +239,15 @@ func (d DockerApplicationProvisionerService) applicationRunningStep(ctx context.
 		return err
 	}
 
+	span.AddEvent("acquiring runtime_info lock")
+
 	lock := d.LockService.GetRwLock(subCtx, exhibitId, "runtime_info")
 	err = lock.Lock()
 	if err != nil {
 		return err
 	}
+
+	span.AddEvent("runtime_info lock acquired")
 
 	defer func(lock util.RwErrMutex) {
 		err = lock.Unlock()

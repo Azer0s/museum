@@ -65,6 +65,7 @@ func Run() {
 	// register services
 	ioc.RegisterSingleton[service.ApplicationProvisionerService](c, service.NewDockerApplicationProvisionerService)
 	ioc.RegisterSingleton[service.ApplicationProvisionerHandlerService](c, service.NewApplicationProvisionerHandlerService)
+	ioc.RegisterSingleton[service.ExhibitCleanupService](c, service.NewExhibitCleanupService)
 
 	// register router and routes
 	ioc.RegisterSingleton[*router.Mux](c, router.NewMux)
@@ -80,11 +81,16 @@ func Run() {
 		}
 	})
 
-	go ioc.ForFunc(c, func(log *zap.SugaredLogger) {
+	go ioc.ForFunc(c, func(log *zap.SugaredLogger, cleanupService service.ExhibitCleanupService) {
 		for {
-			log.Info("checking for expired exhibits")
-			// TODO: repeatedly check for expired exhibits and stop them
 			<-time.After(10 * time.Second)
+
+			log.Info("checking for expired exhibits")
+
+			err := cleanupService.Cleanup()
+			if err != nil {
+				log.Errorw("failed to cleanup exhibits", "error", err)
+			}
 		}
 	})
 

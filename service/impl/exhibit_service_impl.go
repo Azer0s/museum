@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"museum/domain"
@@ -26,6 +27,9 @@ func (e ExhibitServiceImpl) GetExhibitById(ctx context.Context, id string) (doma
 		e.Log.Errorw("error locking global lock", "error", err)
 		return domain.Exhibit{}, err
 	}
+
+	//TODO: span
+
 	defer func(globalLock util.RwErrMutex) {
 		err := globalLock.RUnlock()
 		if err != nil {
@@ -39,6 +43,9 @@ func (e ExhibitServiceImpl) GetExhibitById(ctx context.Context, id string) (doma
 		e.Log.Errorw("error locking exhibit lock", "error", err, "exhibitId", id)
 		return domain.Exhibit{}, err
 	}
+
+	//TODO: span
+
 	defer func(lock util.RwErrMutex) {
 		err := lock.RUnlock()
 		if err != nil {
@@ -51,30 +58,37 @@ func (e ExhibitServiceImpl) GetExhibitById(ctx context.Context, id string) (doma
 		return domain.Exhibit{}, err
 	}
 
-	d, err := e.hydrateExhibit(ctx, id, &exhibit)
+	err = e.hydrateExhibit(ctx, id, &exhibit)
 	if err != nil {
-		return d, err
+		return domain.Exhibit{}, err
 	}
 
 	return exhibit, nil
 }
 
-func (e ExhibitServiceImpl) hydrateExhibit(ctx context.Context, id string, exhibit *domain.Exhibit) (domain.Exhibit, error) {
+func (e ExhibitServiceImpl) hydrateExhibit(ctx context.Context, id string, exhibit *domain.Exhibit) error {
+	subCtx, span := e.Provider.
+		Tracer("exhibit-service").
+		Start(ctx, "hydrateExhibit("+id+")", trace.WithAttributes(attribute.String("exhibitId", id)))
+	defer span.End()
+
+	span.AddEvent("getting runtime info")
 	//get runtime info
-	runtimeInfo, err := e.State.GetRuntimeInfo(ctx, id)
+	runtimeInfo, err := e.State.GetRuntimeInfo(subCtx, id)
 	if err != nil {
-		return domain.Exhibit{}, err
+		return err
 	}
 	exhibit.RuntimeInfo = &runtimeInfo
 
+	span.AddEvent("getting last accessed")
 	//get last accessed
-	lastAccessed, err := e.State.GetLastAccessed(ctx, id)
+	lastAccessed, err := e.State.GetLastAccessed(subCtx, id)
 	if err != nil {
-		return domain.Exhibit{}, err
+		return err
 	}
 	exhibit.RuntimeInfo.LastAccessed = lastAccessed
 
-	return domain.Exhibit{}, nil
+	return nil
 }
 
 func (e ExhibitServiceImpl) GetAllExhibits(ctx context.Context) []domain.Exhibit {
@@ -84,6 +98,9 @@ func (e ExhibitServiceImpl) GetAllExhibits(ctx context.Context) []domain.Exhibit
 		e.Log.Errorw("error locking global lock", "error", err)
 		return nil
 	}
+
+	//TODO: span
+
 	defer func(lock util.RwErrMutex) {
 		err = lock.RUnlock()
 		if err != nil {
@@ -94,11 +111,11 @@ func (e ExhibitServiceImpl) GetAllExhibits(ctx context.Context) []domain.Exhibit
 	exhibits := e.State.GetAllExhibits(ctx)
 
 	for i, exhibit := range exhibits {
-		d, err := e.hydrateExhibit(ctx, exhibit.Id, &exhibit)
+		err = e.hydrateExhibit(ctx, exhibit.Id, &exhibit)
 		if err != nil {
 			continue
 		}
-		exhibits[i] = d
+		exhibits[i] = exhibit
 	}
 
 	return exhibits
@@ -111,6 +128,9 @@ func (e ExhibitServiceImpl) DeleteExhibitById(ctx context.Context, id string) er
 		e.Log.Errorw("error locking exhibit lock", "error", err, "exhibitId", id)
 		return err
 	}
+
+	//TODO: span
+
 	defer func() {
 		err := lock.Unlock()
 		if err != nil {
@@ -131,6 +151,9 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 		e.Log.Errorw("error locking global lock", "error", err)
 		return "", err
 	}
+
+	//TODO: span
+
 	defer func(globalLock util.RwErrMutex) {
 		err := globalLock.Unlock()
 		if err != nil {
