@@ -76,6 +76,9 @@ func (e *EtcdState) GetRuntimeInfo(ctx context.Context, id string) (domain.Exhib
 }
 
 func (e *EtcdState) DeleteRuntimeInfo(ctx context.Context, id string) error {
+	e.RuntimeInfoCacheMu.Lock()
+	defer e.RuntimeInfoCacheMu.Unlock()
+
 	key := "/" + e.Config.GetEtcdBaseKey() + "/" + id + "/" + "runtime_info"
 
 	// create new trace span for event service
@@ -90,6 +93,8 @@ func (e *EtcdState) DeleteRuntimeInfo(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
+
+	delete(e.RuntimeInfoCache, id)
 
 	return nil
 }

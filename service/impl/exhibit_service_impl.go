@@ -279,7 +279,7 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 		return "", err
 	}
 
-	e.Log.Infow("created new exhibit", "exhibitId", createExhibitRequest.Exhibit.Id)
+	e.Log.Debugw("created new exhibit", "exhibitId", createExhibitRequest.Exhibit.Id)
 
 	return createExhibitRequest.Exhibit.Id, nil
 }

@@ -12,6 +12,9 @@ import (
 )
 
 func (e *EtcdState) CreateExhibit(ctx context.Context, app domain.Exhibit) error {
+	e.ExhibitCacheMu.Lock()
+	defer e.ExhibitCacheMu.Unlock()
+
 	key := "/" + e.Config.GetEtcdBaseKey() + "/" + app.Id + "/" + "meta"
 
 	// create new trace span for event service
@@ -44,6 +47,10 @@ func (e *EtcdState) CreateExhibit(ctx context.Context, app domain.Exhibit) error
 
 	span.AddEvent("added exhibit to etcd")
 
+	if e.ExhibitCache != nil {
+		e.ExhibitCache[app.Id] = app
+	}
+
 	return nil
 }
 
@@ -70,6 +77,10 @@ func (e *EtcdState) GetExhibitById(ctx context.Context, id string) (domain.Exhib
 	resp, err := e.Client.Get(subCtx, key)
 	if err != nil {
 		return domain.Exhibit{}, err
+	}
+
+	if resp.Count == 0 {
+		return domain.Exhibit{}, errors.New("exhibit with id " + id + " not found")
 	}
 
 	span.AddEvent("found exhibit")

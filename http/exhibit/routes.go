@@ -170,6 +170,7 @@ func proxyHandler(exhibitService service.ExhibitService, lastAccessedService ser
 		}()
 	}
 }
+
 func RegisterRoutes(r *router.Mux, exhibitService service.ExhibitService, lastAccessedService service.LastAccessedService, resolver service.ApplicationResolverService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, config config.Config, provider trace.TracerProvider) {
 	r.AddRoute(router.Get("/exhibit/{id}/>>", proxyHandler(exhibitService, lastAccessedService, resolver, provisioner, log, config, provider)))
 }
