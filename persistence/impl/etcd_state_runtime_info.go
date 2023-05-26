@@ -8,7 +8,7 @@ import (
 	"museum/domain"
 )
 
-func (e EtcdState) SetRuntimeInfo(ctx context.Context, id string, runtimeInfo domain.ExhibitRuntimeInfo) error {
+func (e *EtcdState) SetRuntimeInfo(ctx context.Context, id string, runtimeInfo domain.ExhibitRuntimeInfo) error {
 	key := "/" + e.Config.GetEtcdBaseKey() + "/" + id + "/" + "runtime_info"
 
 	// create new trace span for event service
@@ -29,10 +29,26 @@ func (e EtcdState) SetRuntimeInfo(ctx context.Context, id string, runtimeInfo do
 
 	span.AddEvent("set runtime info for exhibit")
 
+	e.RuntimeInfoCacheMu.Lock()
+	defer e.RuntimeInfoCacheMu.Unlock()
+
+	if e.RuntimeInfoCache != nil {
+		e.RuntimeInfoCache[id] = runtimeInfo
+	}
+
 	return nil
 }
 
-func (e EtcdState) GetRuntimeInfo(ctx context.Context, id string) (domain.ExhibitRuntimeInfo, error) {
+func (e *EtcdState) GetRuntimeInfo(ctx context.Context, id string) (domain.ExhibitRuntimeInfo, error) {
+	if e.RuntimeInfoCache != nil {
+		e.RuntimeInfoCacheMu.RLock()
+		defer e.RuntimeInfoCacheMu.RUnlock()
+
+		if runtimeInfo, ok := e.RuntimeInfoCache[id]; ok {
+			return runtimeInfo, nil
+		}
+	}
+
 	key := "/" + e.Config.GetEtcdBaseKey() + "/" + id + "/" + "runtime_info"
 
 	// create new trace span for event service
@@ -59,7 +75,7 @@ func (e EtcdState) GetRuntimeInfo(ctx context.Context, id string) (domain.Exhibi
 	return runtimeInfo, nil
 }
 
-func (e EtcdState) DeleteRuntimeInfo(ctx context.Context, id string) error {
+func (e *EtcdState) DeleteRuntimeInfo(ctx context.Context, id string) error {
 	key := "/" + e.Config.GetEtcdBaseKey() + "/" + id + "/" + "runtime_info"
 
 	// create new trace span for event service

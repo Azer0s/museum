@@ -27,7 +27,6 @@ type LoadingPageTemplate struct {
 
 func proxyHandler(exhibitService service.ExhibitService, lastAccessedService service.LastAccessedService, resolver service.ApplicationResolverService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, c config.Config, provider trace.TracerProvider) router.MuxHandlerFunc {
 	tmpl, _ := template.New("loading").Parse(string(loadingPage))
-	//TODO: log everything
 
 	return func(res *router.Response, req *router.Request) {
 		id, ok := req.Params["id"]

@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-func (e EtcdState) CreateExhibit(ctx context.Context, app domain.Exhibit) error {
+func (e *EtcdState) CreateExhibit(ctx context.Context, app domain.Exhibit) error {
 	key := "/" + e.Config.GetEtcdBaseKey() + "/" + app.Id + "/" + "meta"
 
 	// create new trace span for event service
@@ -47,7 +47,16 @@ func (e EtcdState) CreateExhibit(ctx context.Context, app domain.Exhibit) error 
 	return nil
 }
 
-func (e EtcdState) GetExhibitById(ctx context.Context, id string) (domain.Exhibit, error) {
+func (e *EtcdState) GetExhibitById(ctx context.Context, id string) (domain.Exhibit, error) {
+	if e.ExhibitCache != nil {
+		e.ExhibitCacheMu.RLock()
+		defer e.ExhibitCacheMu.RUnlock()
+
+		if exhibit, ok := e.ExhibitCache[id]; ok {
+			return exhibit, nil
+		}
+	}
+
 	key := "/" + e.Config.GetEtcdBaseKey() + "/" + id + "/" + "meta"
 
 	// create new trace span for event service
@@ -73,7 +82,20 @@ func (e EtcdState) GetExhibitById(ctx context.Context, id string) (domain.Exhibi
 	return exhibit, nil
 }
 
-func (e EtcdState) GetAllExhibits(ctx context.Context) []domain.Exhibit {
+func (e *EtcdState) GetAllExhibits(ctx context.Context) []domain.Exhibit {
+	var exhibits []domain.Exhibit
+
+	if e.ExhibitCache != nil {
+		e.ExhibitCacheMu.RLock()
+		defer e.ExhibitCacheMu.RUnlock()
+
+		for _, exhibit := range e.ExhibitCache {
+			exhibits = append(exhibits, exhibit)
+		}
+
+		return exhibits
+	}
+
 	searchKey := "/" + e.Config.GetEtcdBaseKey() + "/"
 
 	// create new trace span for event service
@@ -90,7 +112,6 @@ func (e EtcdState) GetAllExhibits(ctx context.Context) []domain.Exhibit {
 	}
 
 	span.AddEvent("found exhibits")
-	var exhibits []domain.Exhibit
 	for _, kv := range resp.Kvs {
 		//check that kv ends with /object
 		if !strings.HasSuffix(string(kv.Key), "/meta") {
@@ -108,7 +129,7 @@ func (e EtcdState) GetAllExhibits(ctx context.Context) []domain.Exhibit {
 	return exhibits
 }
 
-func (e EtcdState) DeleteExhibitById(ctx context.Context, id string) error {
+func (e *EtcdState) DeleteExhibitById(ctx context.Context, id string) error {
 	//TODO implement me
 	panic("implement me")
 }

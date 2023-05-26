@@ -16,10 +16,11 @@ import (
 )
 
 type ExhibitServiceImpl struct {
-	State       persistence.State
-	Provider    trace.TracerProvider
-	LockService service.LockService
-	Log         *zap.SugaredLogger
+	State              persistence.State
+	RuntimeInfoService service.RuntimeInfoService
+	Provider           trace.TracerProvider
+	LockService        service.LockService
+	Log                *zap.SugaredLogger
 }
 
 func (e ExhibitServiceImpl) GetExhibitById(ctx context.Context, id string) (domain.Exhibit, error) {
@@ -76,7 +77,7 @@ func (e ExhibitServiceImpl) hydrateExhibit(ctx context.Context, id string, exhib
 
 	span.AddEvent("getting runtime info")
 	//get runtime info
-	runtimeInfo, err := e.State.GetRuntimeInfo(subCtx, id)
+	runtimeInfo, err := e.RuntimeInfoService.GetRuntimeInfo(subCtx, id)
 	if err != nil {
 		return err
 	}

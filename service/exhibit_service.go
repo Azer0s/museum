@@ -10,11 +10,12 @@ import (
 
 type ExhibitService service.ExhibitService
 
-func NewExhibitService(state persistence.State, lockService service.LockService, factory *observability.TracerProviderFactory, log *zap.SugaredLogger) ExhibitService {
+func NewExhibitService(state persistence.State, infoService service.RuntimeInfoService, lockService service.LockService, factory *observability.TracerProviderFactory, log *zap.SugaredLogger) ExhibitService {
 	return &impl.ExhibitServiceImpl{
-		State:       state,
-		Provider:    factory.Build("exhibit-service"),
-		LockService: lockService,
-		Log:         log,
+		State:              state,
+		RuntimeInfoService: infoService,
+		Provider:           factory.Build("exhibit-service"),
+		LockService:        lockService,
+		Log:                log,
 	}
 }

@@ -3,16 +3,16 @@ package impl
 import (
 	"context"
 	"errors"
+	docker "github.com/docker/docker/client"
 	"museum/domain"
 	service "museum/service/interface"
 	"museum/util/cache"
-	"os/exec"
-	"strings"
 )
 
 type DockerHostApplicationResolverService struct {
 	ExhibitService service.ExhibitService
 	IpCache        *cache.LRU[string, string]
+	Client         *docker.Client
 }
 
 func (d DockerHostApplicationResolverService) ResolveApplication(ctx context.Context, exhibitId string) (string, error) {
@@ -56,14 +56,10 @@ func (d DockerHostApplicationResolverService) ResolveExhibitObject(exhibit domai
 
 	objectContainerName := exhibit.Name + "_" + object.Name
 
-	// TODO: refactor this to use the docker API instead of shelling out
-	cmd := "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' " + objectContainerName
-	ip, err := exec.Command("bash", "-c", cmd).Output()
+	inspect, err := d.Client.ContainerInspect(context.Background(), objectContainerName)
 	if err != nil {
 		return "", err
 	}
 
-	ipStr := strings.ReplaceAll(string(ip), "\n", "")
-
-	return ipStr, nil
+	return inspect.NetworkSettings.DefaultNetworkSettings.IPAddress, nil
 }

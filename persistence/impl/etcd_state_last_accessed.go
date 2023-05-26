@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-func (e EtcdState) GetLastAccessed(ctx context.Context, id string) (int64, error) {
+func (e *EtcdState) GetLastAccessed(ctx context.Context, id string) (int64, error) {
 	key := "/" + e.Config.GetEtcdBaseKey() + "/" + id + "/" + "last_accessed"
 
 	// create new trace span for event service
@@ -33,7 +33,7 @@ func (e EtcdState) GetLastAccessed(ctx context.Context, id string) (int64, error
 	return i, nil
 }
 
-func (e EtcdState) SetLastAccessed(ctx context.Context, id string, lastAccessed int64) error {
+func (e *EtcdState) SetLastAccessed(ctx context.Context, id string, lastAccessed int64) error {
 	key := "/" + e.Config.GetEtcdBaseKey() + "/" + id + "/" + "last_accessed"
 
 	// create new trace span for event service
@@ -52,7 +52,7 @@ func (e EtcdState) SetLastAccessed(ctx context.Context, id string, lastAccessed 
 	return nil
 }
 
-func (e EtcdState) DeleteLastAccessed(ctx context.Context, id string) error {
+func (e *EtcdState) DeleteLastAccessed(ctx context.Context, id string) error {
 	key := "/" + e.Config.GetEtcdBaseKey() + "/" + id + "/" + "last_accessed"
 
 	// create new trace span for event service
