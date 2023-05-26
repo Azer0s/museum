@@ -1,6 +1,7 @@
 package impl
 
 import (
+	"museum/domain"
 	service "museum/service/interface"
 )
 
@@ -11,9 +12,9 @@ type LivecheckFactoryServiceImpl struct {
 
 func (l *LivecheckFactoryServiceImpl) GetLivecheckService(objectType string) service.Livecheck {
 	switch objectType {
-	case "http":
+	case domain.LivecheckTypeHttp:
 		return l.HttpLivecheck
-	case "exec":
+	case domain.LivecheckTypeExec:
 		return l.ExecLivecheck
 	default:
 		return nil

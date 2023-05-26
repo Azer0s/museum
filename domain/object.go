@@ -1,5 +1,10 @@
 package domain
 
+const (
+	LivecheckTypeHttp = "http"
+	LivecheckTypeExec = "exec"
+)
+
 type Object struct {
 	Name        string     `json:"name" yaml:"name"`
 	Image       string     `json:"image" yaml:"image"`

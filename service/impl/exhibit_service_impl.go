@@ -11,6 +11,8 @@ import (
 	"museum/persistence"
 	service "museum/service/interface"
 	"museum/util"
+	"strconv"
+	"time"
 )
 
 type ExhibitServiceImpl struct {
@@ -191,6 +193,54 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 
 	// TODO: validate mount paths
 
+	// validate lease time
+	_, err = time.ParseDuration(createExhibitRequest.Exhibit.Lease)
+	if err != nil {
+		return "", errors.New("lease time must be a valid duration")
+	}
+
+	// validate livechecks
+	for _, object := range createExhibitRequest.Exhibit.Objects {
+		l := object.Livecheck
+		if l == nil {
+			continue
+		}
+
+		// validate livecheck type
+		if l.Type != domain.LivecheckTypeHttp && l.Type != domain.LivecheckTypeExec {
+			return "", errors.New("livecheck type must be one of: " + domain.LivecheckTypeHttp + ", " + domain.LivecheckTypeExec + " (in object " + object.Name + ")")
+		}
+
+		// check http livecheck
+		if l.Type == domain.LivecheckTypeHttp {
+			// check valid http method
+			method, ok := l.Config["method"]
+			if ok {
+				if method != "GET" && method != "POST" && method != "PUT" && method != "DELETE" {
+					return "", errors.New("http livecheck method must be one of: GET, POST, PUT, DELETE (in object " + object.Name + ")")
+				}
+			}
+
+			// check valid http status
+			status, ok := l.Config["status"]
+			if ok {
+				_, err := strconv.Atoi(status)
+				if err != nil {
+					return "", errors.New("http livecheck status must be a valid integer (in object " + object.Name + ")")
+				}
+			}
+
+			// check valid port
+			port, ok := l.Config["port"]
+			if ok {
+				_, err := strconv.Atoi(port)
+				if err != nil {
+					return "", errors.New("http livecheck port must be a valid integer (in object " + object.Name + ")")
+				}
+			}
+		}
+	}
+
 	// give exhibit a unique id
 	createExhibitRequest.Exhibit.Id = uuid.New().String()
 
@@ -206,23 +256,29 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 		Start(ctx, "handleCreateExhibit")
 	defer span.End()
 
-	err = e.State.SetLastAccessed(subCtx, createExhibitRequest.Exhibit.Id, 0)
+	e.Log.Infow("creating new exhibit", "exhibitId", createExhibitRequest.Exhibit.Id)
+
+	err = e.State.SetLastAccessed(subCtx, createExhibitRequest.Exhibit.Id, time.Now().Unix())
 	if err != nil {
 		return "", err
 	}
 
 	err = e.State.SetRuntimeInfo(subCtx, createExhibitRequest.Exhibit.Id, *createExhibitRequest.Exhibit.RuntimeInfo)
 	if err != nil {
+		e.Log.Errorw("error setting runtime info, reverting", "error", err, "exhibitId", createExhibitRequest.Exhibit.Id)
 		err = e.State.DeleteLastAccessed(subCtx, createExhibitRequest.Exhibit.Id)
 		return "", err
 	}
 
 	err = e.State.CreateExhibit(subCtx, createExhibitRequest.Exhibit)
 	if err != nil {
+		e.Log.Errorw("error creating exhibit, reverting", "error", err, "exhibitId", createExhibitRequest.Exhibit.Id)
 		err = e.State.DeleteLastAccessed(subCtx, createExhibitRequest.Exhibit.Id)
 		err = e.State.DeleteRuntimeInfo(subCtx, createExhibitRequest.Exhibit.Id)
 		return "", err
 	}
+
+	e.Log.Infow("created new exhibit", "exhibitId", createExhibitRequest.Exhibit.Id)
 
 	return createExhibitRequest.Exhibit.Id, nil
 }
