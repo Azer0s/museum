@@ -87,14 +87,16 @@ func (e *EtcdState) DeleteRuntimeInfo(ctx context.Context, id string) error {
 		Start(ctx, "DeleteRuntimeInfo", trace.WithAttributes(attribute.String("key", key), attribute.String("id", id)))
 	defer span.End()
 
-	span.AddEvent("searching for runtime info for exhibit")
+	span.AddEvent("deleting runtime info for exhibit")
 
 	_, err := e.Client.Delete(subCtx, key)
 	if err != nil {
 		return err
 	}
 
-	delete(e.RuntimeInfoCache, id)
+	if e.RuntimeInfoCache != nil {
+		delete(e.RuntimeInfoCache, id)
+	}
 
 	return nil
 }

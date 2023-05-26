@@ -141,6 +141,27 @@ func (e *EtcdState) GetAllExhibits(ctx context.Context) []domain.Exhibit {
 }
 
 func (e *EtcdState) DeleteExhibitById(ctx context.Context, id string) error {
-	//TODO implement me
-	panic("implement me")
+	e.ExhibitCacheMu.Lock()
+	defer e.ExhibitCacheMu.Unlock()
+
+	key := "/" + e.Config.GetEtcdBaseKey() + "/" + id + "/" + "meta"
+
+	// create new trace span for event service
+	subCtx, span := e.Provider.
+		Tracer("etcd persistence").
+		Start(ctx, "DeleteExhibitById", trace.WithAttributes(attribute.String("key", key), attribute.String("id", id)))
+	defer span.End()
+
+	span.AddEvent("deleting exhibit")
+
+	_, err := e.Client.Delete(subCtx, key)
+	if err != nil {
+		return err
+	}
+
+	if e.ExhibitCache != nil {
+		delete(e.ExhibitCache, id)
+	}
+
+	return nil
 }
