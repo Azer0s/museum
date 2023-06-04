@@ -107,6 +107,7 @@ func proxyHandler(exhibitService service.ExhibitService, lastAccessedService ser
 			return
 		}
 
+		// TODO: refactor this to HttpProxyService (so this would be DockerHttpProxyService)
 		// proxy the request
 		proxyReq, err := http.NewRequest(req.Method, "http://"+ip, req.Body)
 		if err != nil {
