@@ -7,6 +7,7 @@ require (
 	github.com/cloudevents/sdk-go/v2 v2.13.0
 	github.com/docker/docker v23.0.3+incompatible
 	github.com/google/uuid v1.1.2
+	github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b
 	github.com/stretchr/testify v1.8.3
 	go.etcd.io/etcd/client/v3 v3.5.9
 	go.opentelemetry.io/otel v1.16.0

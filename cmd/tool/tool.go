@@ -68,7 +68,7 @@ func Warmup(id string) (string, error) {
 		return "", err
 	}
 
-	event, err := domain.NewStartEvent(*exhibit)
+	event, err := domain.NewStartEvent(exhibit.ToExhibit())
 	if err != nil {
 		return "", err
 	}
@@ -81,7 +81,14 @@ func Warmup(id string) (string, error) {
 	return a.GetBaseUrl() + "/exhibit/" + id, nil
 }
 
-func List() ([]domain.Exhibit, error) {
-	//TODO implement me
-	panic("implement me")
+func List() (string, []domain.ExhibitDto, error) {
+	c := createToolContainer()
+
+	a := ioc.Get[ApiClient](c)
+	exhibits, err := a.GetAllExhibits()
+	if err != nil {
+		return "", nil, err
+	}
+
+	return a.GetBaseUrl(), exhibits, nil
 }

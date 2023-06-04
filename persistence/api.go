@@ -6,6 +6,7 @@ import (
 	"museum/config"
 	"museum/observability"
 	"museum/persistence/impl"
+	"time"
 )
 
 func NewEtcdState(config config.Config, etcdClient *etcd.Client, providerFactory *observability.TracerProviderFactory, log *zap.SugaredLogger) State {
@@ -16,6 +17,20 @@ func NewEtcdState(config config.Config, etcdClient *etcd.Client, providerFactory
 		Log:      log,
 	}
 
-	etcdState.Init()
+	done := make(chan bool)
+	go func() {
+		etcdState.Init()
+		done <- true
+	}()
+
+	select {
+	case <-done:
+		break
+	case <-time.After(10 * time.Second):
+		log.Fatalw("etcd persistence initialization timed out")
+	}
+
+	log.Debugw("etcd persistence initialized")
+
 	return etcdState
 }

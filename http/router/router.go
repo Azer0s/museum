@@ -55,7 +55,7 @@ func (r *Mux) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 
 	writer.WriteHeader(http.StatusNotFound)
 	err := WriteStatus(writer, Status{Status: "Not Found"})
-	if err != nil {
+	if err == nil {
 		r.log.Warnw("no route found", "method", request.Method, "path", request.URL.Path, "requestId", requestId)
 		return
 	}

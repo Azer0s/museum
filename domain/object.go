@@ -16,6 +16,14 @@ type Object struct {
 	Port        *string    `json:"port" yaml:"port"`
 }
 
+func (o Object) ToDto() ObjectDto {
+	return ObjectDto{
+		Name:  o.Name,
+		Image: o.Image,
+		Label: o.Label,
+	}
+}
+
 type Livecheck struct {
 	Type   string    `json:"type" yaml:"type"`
 	Config StringMap `json:"config" yaml:"config"`

@@ -14,11 +14,31 @@ type ApiClient interface {
 	DeleteExhibitById(id string) error
 	CreateEvent(event *cloudevents.Event) error
 	GetBaseUrl() string
-	GetExhibitById(id string) (*domain.Exhibit, error)
+	GetExhibitById(id string) (*domain.ExhibitDto, error)
+	GetAllExhibits() ([]domain.ExhibitDto, error)
 }
 
 type ApiClientImpl struct {
 	BaseUrl string
+}
+
+func (a *ApiClientImpl) GetAllExhibits() ([]domain.ExhibitDto, error) {
+	res, err := http.Get(a.BaseUrl + "/api/exhibits")
+	if err != nil {
+		return nil, err
+	}
+
+	exhibits := make([]domain.ExhibitDto, 0)
+	err = json.NewDecoder(res.Body).Decode(&exhibits)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return nil, errors.New("could not get exhibits")
+	}
+
+	return exhibits, nil
 }
 
 func (a *ApiClientImpl) CreateExhibit(exhibit *domain.Exhibit) (string, error) {
@@ -93,13 +113,13 @@ func (a *ApiClientImpl) CreateEvent(event *cloudevents.Event) error {
 	return nil
 }
 
-func (a *ApiClientImpl) GetExhibitById(id string) (*domain.Exhibit, error) {
+func (a *ApiClientImpl) GetExhibitById(id string) (*domain.ExhibitDto, error) {
 	res, err := http.Get(a.BaseUrl + "/api/exhibits/" + id)
 	if err != nil {
 		return nil, err
 	}
 
-	exhibit := &domain.Exhibit{}
+	exhibit := &domain.ExhibitDto{}
 	err = json.NewDecoder(res.Body).Decode(exhibit)
 	if err != nil {
 		return nil, err

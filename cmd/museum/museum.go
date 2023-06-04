@@ -2,9 +2,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/hako/durafmt"
 	"museum/cmd/server"
 	"museum/cmd/tool"
+	"museum/domain"
 	"os"
+	"time"
 )
 
 func printUsage() {
@@ -57,10 +60,29 @@ func main() {
 		}
 		fmt.Println("‎‎‎🗑️ exhibit deleted successfully")
 	case "list":
-		_, err := tool.List()
+		baseUrl, exhibits, err := tool.List()
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
+		}
+		for _, e := range exhibits {
+			fmt.Println("🏛️ " + e.Name)
+			fmt.Println("    👉 " + baseUrl + "/exhibit/" + e.Id)
+
+			if e.RuntimeInfo.Status == domain.Running {
+				d, err := time.ParseDuration(e.Lease)
+				if err != nil {
+					panic(err)
+				}
+				fmt.Println("    ⏲ Expires in " + durafmt.Parse(time.Until(time.Unix(e.RuntimeInfo.LastAccessed, 0).Add(d)).Truncate(time.Second)).String() + " from now")
+			} else {
+				fmt.Println("    ⏲ Expired " + durafmt.Parse(time.Since(time.Unix(e.RuntimeInfo.LastAccessed, 0)).Truncate(time.Second)).String() + " ago")
+			}
+
+			fmt.Println("    📦 exhibits:")
+			for _, o := range e.Objects {
+				fmt.Println("        🎨 " + o.Name + " (" + o.Image + ")")
+			}
 		}
 	case "warmup":
 		if len(os.Args) < 3 {

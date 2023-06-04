@@ -11,9 +11,16 @@ type Exhibit struct {
 }
 
 func (e Exhibit) ToDto() ExhibitDto {
+	objects := make([]ObjectDto, 0)
+	for _, o := range e.Objects {
+		objects = append(objects, o.ToDto())
+	}
+
 	return ExhibitDto{
 		Id:          e.Id,
 		Name:        e.Name,
-		RuntimeInfo: e.RuntimeInfo,
+		RuntimeInfo: e.RuntimeInfo.ToDto(),
+		Lease:       e.Lease,
+		Objects:     objects,
 	}
 }

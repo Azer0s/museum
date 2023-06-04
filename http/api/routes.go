@@ -27,7 +27,7 @@ func getExhibits(exhibitService service.ExhibitService, log *zap.SugaredLogger, 
 			dtos[i] = exhibit.ToDto()
 		}
 
-		err := res.WriteJson(exhibits)
+		err := res.WriteJson(dtos)
 		if err != nil {
 			log.Warnw("error writing json", "error", err, "requestId", req.RequestID)
 			res.WriteErr(err)

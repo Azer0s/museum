@@ -16,3 +16,10 @@ type ExhibitRuntimeInfo struct {
 	RelatedContainers []string `json:"related_containers"`
 	LastAccessed      int64    `json:"-"`
 }
+
+func (e *ExhibitRuntimeInfo) ToDto() RuntimeInfoDto {
+	return RuntimeInfoDto{
+		Status:       e.Status,
+		LastAccessed: e.LastAccessed,
+	}
+}

@@ -102,7 +102,7 @@ You would then start the application with `museum create my-exhibit.yml`. This w
 ```bash
 $ museum create my-exhibit.yml
  🧑‍🎨  exhibit created successfully
- 👉  http://localhost:8080/exhibits/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
+ 👉  http://localhost:8080/exhibit/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
 ```
 
 ## Accessing the applications
@@ -111,15 +111,15 @@ To access the applications, you need to know the path of the application. You ca
 
 ```bash
 $ museum list
-> my-research-project
-    👉 http://localhost:8080/exhibits/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
-    ⏲ Expires in 23 minutes and 59 seconds from now
+🏛️ my-research-project
+    👉 http://localhost:8080/exhibit/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
+    ⏲ Expires in 23 minutes 59 seconds from now
     📦 exhibits:
         📦 my-database (postgres:9.6)
         📦 my-webapp (my-research-project:latest)
-> my-other-project
-    👉 http://localhost:8080/exhibits/3b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
-    ⏲ Expires in 1 hour, 11 minutes and 16 seconds from now
+🏛️ my-other-project
+    👉 http://localhost:8080/exhibit/3b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
+    ⏲ Expires in 1 hour 11 minutes 16 seconds from now
     📦 exhibits:
         📦 my-perl-app (perl:5.30)
 ```
@@ -140,12 +140,12 @@ $ museum delete my-research-project
 ```bash
 $ museum renew my-research-project 2h
  ⏲  exhibit lease renewed successfully
- 👉  http://localhost:8080/exhibits/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
+ 👉  http://localhost:8080/exhibit/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
 ```
 
 ### Starting an application manually (hot start)
 ```bash
 $ museum warmup my-research-project
  🔥  exhibit warmed up successfully
- 👉  http://localhost:8080/exhibits/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
+ 👉  http://localhost:8080/exhibit/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
 ```
