@@ -56,6 +56,7 @@ func Run() {
 	ioc.RegisterSingleton[service.ExhibitService](c, service.NewExhibitService)
 	ioc.RegisterSingleton[service.LastAccessedService](c, service.NewLastAccessedService)
 	ioc.RegisterSingleton[service.ApplicationResolverService](c, service.NewDockerHostApplicationResolverService)
+	ioc.RegisterSingleton[service.ApplicationProxyService](c, service.NewDockerApplicationProxyService)
 
 	// register livecheck
 	ioc.RegisterSingleton[*service.HttpLivecheck](c, service.NewHttpLivecheck)

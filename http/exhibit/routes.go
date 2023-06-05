@@ -6,7 +6,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
-	"io"
 	"museum/config"
 	"museum/domain"
 	"museum/http/router"
@@ -25,7 +24,7 @@ type LoadingPageTemplate struct {
 	ExhibitId string
 }
 
-func proxyHandler(exhibitService service.ExhibitService, lastAccessedService service.LastAccessedService, resolver service.ApplicationResolverService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, c config.Config, provider trace.TracerProvider) router.MuxHandlerFunc {
+func proxyHandler(exhibitService service.ExhibitService, lastAccessedService service.LastAccessedService, proxy service.ApplicationProxyService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, c config.Config, provider trace.TracerProvider) router.MuxHandlerFunc {
 	tmpl, _ := template.New("loading").Parse(string(loadingPage))
 
 	return func(res *router.Response, req *router.Request) {
@@ -99,65 +98,10 @@ func proxyHandler(exhibitService service.ExhibitService, lastAccessedService ser
 			return
 		}
 
-		// forward to exhibit
-		ip, err := resolver.ResolveApplication(req.Context(), id)
-		if err != nil {
-			log.Warnw("error resolving application", "error", err, "requestId", req.RequestID, "exhibitId", app.Id)
-			res.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		// TODO: refactor this to HttpProxyService (so this would be DockerHttpProxyService)
 		// proxy the request
-		proxyReq, err := http.NewRequest(req.Method, "http://"+ip, req.Body)
+		err = proxy.ForwardRequest(id, res, req)
 		if err != nil {
-			log.Warnw("error creating proxy request", "error", err, "requestId", req.RequestID, "exhibitId", app.Id)
-			res.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		proxyReq.Header = req.Header
-		proxyReq.Host = req.Host
-
-		//do request with timeout
-		var proxyRes *http.Response
-		resultChan := make(chan error)
-		go func() {
-			var err error
-			proxyRes, err = http.DefaultClient.Do(proxyReq)
-			resultChan <- err
-		}()
-
-		select {
-		case err := <-resultChan:
-			if err != nil {
-				log.Warnw("error doing proxy request", "error", err, "requestId", req.RequestID, "exhibitId", app.Id, "httpStatus", proxyRes.StatusCode)
-				res.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-		case <-time.After(5 * time.Second):
-			log.Warnw("timeout doing proxy request", "requestId", req.RequestID, "exhibitId", app.Id)
-			res.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		for k, v := range proxyRes.Header {
-			res.Header().Set(k, v[0])
-		}
-
-		res.WriteHeader(proxyRes.StatusCode)
-
-		// read entire body
-		body, err := io.ReadAll(proxyRes.Body)
-		if err != nil {
-			log.Warnw("error reading body", "error", err, "requestId", req.RequestID, "exhibitId", app.Id)
-			res.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		_, err = res.Write(body)
-		if err != nil {
-			log.Warnw("error writing body", "error", err, "requestId", req.RequestID, "exhibitId", app.Id)
+			log.Warnw("error proxying request", "error", err, "requestId", req.RequestID, "exhibitId", app.Id)
 			res.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -172,6 +116,6 @@ func proxyHandler(exhibitService service.ExhibitService, lastAccessedService ser
 	}
 }
 
-func RegisterRoutes(r *router.Mux, exhibitService service.ExhibitService, lastAccessedService service.LastAccessedService, resolver service.ApplicationResolverService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, config config.Config, provider trace.TracerProvider) {
-	r.AddRoute(router.Get("/exhibit/{id}/>>", proxyHandler(exhibitService, lastAccessedService, resolver, provisioner, log, config, provider)))
+func RegisterRoutes(r *router.Mux, exhibitService service.ExhibitService, lastAccessedService service.LastAccessedService, proxy service.ApplicationProxyService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, config config.Config, provider trace.TracerProvider) {
+	r.AddRoute(router.Get("/exhibit/{id}/>>", proxyHandler(exhibitService, lastAccessedService, proxy, provisioner, log, config, provider)))
 }

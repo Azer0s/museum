@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/hako/durafmt"
 	"museum/cmd/server"
 	"museum/cmd/tool"
 	"museum/domain"
+	"museum/util"
 	"os"
 	"time"
 )
@@ -19,7 +21,7 @@ func printUsage() {
 	fmt.Println("\t- Creates a new exhibit")
 	fmt.Println("\tdelete <name>")
 	fmt.Println("\t- Deletes a exhibit")
-	fmt.Println("\tlist")
+	fmt.Println("\tlist (--json)")
 	fmt.Println("\t- Lists all exhibits")
 	fmt.Println("\trenew <name> <lease>")
 	fmt.Println("\t- Renews a lease on an exhibit")
@@ -65,23 +67,47 @@ func main() {
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
-		for _, e := range exhibits {
-			fmt.Println("🏛️ " + e.Name)
-			fmt.Println("    👉 " + baseUrl + "/exhibit/" + e.Id)
+
+		if len(os.Args) > 2 && os.Args[2] == "--json" {
+			b, err := json.Marshal(exhibits)
+			if err != nil {
+				os.Exit(1)
+			}
+			fmt.Println(string(b))
+			os.Exit(0)
+		}
+
+		for i, e := range exhibits {
+			fmt.Println("🧮  " + e.Name)
+			fmt.Print("    ")
+			if e.RuntimeInfo.Status == domain.Running {
+				fmt.Print("🟢 ")
+			} else {
+				fmt.Print("🔴 ")
+			}
+			fmt.Println(" " + baseUrl + "/exhibit/" + e.Id)
 
 			if e.RuntimeInfo.Status == domain.Running {
 				d, err := time.ParseDuration(e.Lease)
 				if err != nil {
 					panic(err)
 				}
-				fmt.Println("    ⏲ Expires in " + durafmt.Parse(time.Until(time.Unix(e.RuntimeInfo.LastAccessed, 0).Add(d)).Truncate(time.Second)).String() + " from now")
+				fmt.Println("    ⏰‎  Expires in " + durafmt.Parse(time.Until(time.Unix(e.RuntimeInfo.LastAccessed, 0).Add(d)).Truncate(time.Second)).String() + " from now")
 			} else {
-				fmt.Println("    ⏲ Expired " + durafmt.Parse(time.Since(time.Unix(e.RuntimeInfo.LastAccessed, 0)).Truncate(time.Second)).String() + " ago")
+				fmt.Println("    ⏰‎  Expired " + durafmt.Parse(time.Since(time.Unix(e.RuntimeInfo.LastAccessed, 0)).Truncate(time.Second)).String() + " ago")
 			}
 
-			fmt.Println("    📦 exhibits:")
+			fmt.Println("    🧺  exhibits:")
 			for _, o := range e.Objects {
-				fmt.Println("        🎨 " + o.Name + " (" + o.Image + ")")
+				fmt.Println("        📜  " + o.Name + " (" + o.Image + ")")
+			}
+
+			if i != len(exhibits)-1 {
+				w := util.GetTerminalWidth()
+				for i := 0; i < w; i++ {
+					fmt.Print("─")
+				}
+				fmt.Println()
 			}
 		}
 	case "warmup":
