@@ -1,6 +1,6 @@
 package config
 
-//TODO: add proxy mode
+import proxy_mode "museum/config/proxy-mode"
 
 type Config interface {
 	GetEtcdHost() string
@@ -10,4 +10,6 @@ type Config interface {
 	GetPort() string
 	GetJaegerHost() string
 	GetEnvironment() string
+	GetProxyMode() proxy_mode.Mode
+	GetDevProxyUrl() string
 }

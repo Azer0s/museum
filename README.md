@@ -15,10 +15,9 @@ mūsēum is available as a Docker image. You can find the image on Docker Hub. T
 * `ETCD_HOST`: The address of the etcd instance
 * `ETCD_BASE_KEY`: The base key to use for etcd (optional, defaults to `museum`)
 * `DOCKER_HOST`: The address of the Docker Swarm (optional, defaults to `unix:///var/run/docker.sock`)
-* `PROXY_MODE`: The mode to use for the proxy (optional, defaults to `swarm`)
+* `PROXY_MODE`: The mode to use for the proxy (optional, defaults to `swarm-ext`)
   * `swarm`: Use the Docker Swarm to start applications (assumes that mūsēum is running in a Docker Swarm)
   * `swarm-ext`: Use the Docker Swarm to start applications (assumes that mūsēum is running outside the Docker Swarm)
-  * `dev-ext`: Same as `swarm-ext` but uses the docker-proxy (located in `dev/docker-proxy`) to connect to applications (assumes that mūsēum is running outside the Docker Swarm, this is only available if the `ENVIRONMENT` is set to `development`)
 * `HOSTNAME`: The hostname of the mūsēum instance (optional, defaults to `localhost`)
 * `PORT`: The port to listen on (optional, defaults to `8080`)
 * `JAEGER_HOST`: The address of the Jaeger instance (optional)

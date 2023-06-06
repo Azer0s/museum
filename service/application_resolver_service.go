@@ -9,7 +9,13 @@ import (
 
 type ApplicationResolverService service.ApplicationResolverService
 
-func NewDockerHostApplicationResolverService(exhibitService service.ExhibitService, client *docker.Client) ApplicationResolverService {
+func NewDockerHostApplicationResolverService(exhibitService service.ExhibitService) ApplicationResolverService {
+	return &impl.DockerHostApplicationResolverService{
+		ExhibitService: exhibitService,
+	}
+}
+
+func NewDockerExtHostApplicationResolverService(exhibitService service.ExhibitService, client *docker.Client) ApplicationResolverService {
 	return &impl.DockerExtHostApplicationResolverService{
 		ExhibitService: exhibitService,
 		IpCache:        cache.NewLRU[string, string](1000),

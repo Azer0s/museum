@@ -1,5 +1,9 @@
 package impl
 
+import (
+	proxy_mode "museum/config/proxy-mode"
+)
+
 type EnvConfig struct {
 	EtcdHost    string `env:"ETCD_HOST,required"`
 	EtcdBaseKey string `env:"ETCD_BASE_KEY" envDefault:"museum"`
@@ -8,6 +12,8 @@ type EnvConfig struct {
 	Port        string `env:"PORT" envDefault:"8080"`
 	JaegerHost  string `env:"JAEGER_HOST"`
 	Environment string `env:"ENVIRONMENT" envDefault:"development"`
+	ProxyMode   string `env:"PROXY_MODE" envDefault:"swarm-ext"`
+	DevProxyUrl string `env:"DEV_PROXY_URL" envDefault:"http://localhost:3000"`
 }
 
 func (e EnvConfig) GetEtcdHost() string {
@@ -36,4 +42,19 @@ func (e EnvConfig) GetJaegerHost() string {
 
 func (e EnvConfig) GetEnvironment() string {
 	return e.Environment
+}
+
+func (e EnvConfig) GetProxyMode() proxy_mode.Mode {
+	switch e.ProxyMode {
+	case "swarm":
+		return proxy_mode.ModeSwarm
+	case "swarm-ext":
+		return proxy_mode.ModeSwarmExt
+	default:
+		panic("invalid proxy mode" + e.ProxyMode)
+	}
+}
+
+func (e EnvConfig) GetDevProxyUrl() string {
+	return e.DevProxyUrl
 }

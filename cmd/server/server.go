@@ -9,6 +9,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"museum/config"
+	proxy_mode "museum/config/proxy-mode"
 	"museum/http/api"
 	"museum/http/exhibit"
 	"museum/http/health"
@@ -56,18 +57,16 @@ func Run() {
 	ioc.RegisterSingleton[service.ExhibitService](c, service.NewExhibitService)
 	ioc.RegisterSingleton[service.LastAccessedService](c, service.NewLastAccessedService)
 
-	/*cfg := ioc.Get[config.Config](c)
-	TODO: implement proxy modes
-	switch cfg.ProxyMode {
-	case "swarm":
+	cfg := ioc.Get[config.Config](c)
+	switch cfg.GetProxyMode() {
+	case proxy_mode.ModeSwarm:
+		ioc.RegisterSingleton[service.ApplicationResolverService](c, service.NewDockerHostApplicationResolverService)
 		break
-	case "swarm-ext":
+	case proxy_mode.ModeSwarmExt:
+		ioc.RegisterSingleton[service.ApplicationResolverService](c, service.NewDockerExtHostApplicationResolverService)
 		break
-	case "dev-ext":
-		break
-	}*/
+	}
 
-	ioc.RegisterSingleton[service.ApplicationResolverService](c, service.NewDockerHostApplicationResolverService)
 	ioc.RegisterSingleton[service.ApplicationProxyService](c, service.NewDockerApplicationProxyService)
 
 	// register livecheck
