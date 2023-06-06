@@ -90,7 +90,7 @@
             let data = await res.json();
 
             if (data["runtime_info"]["status"] === "running") {
-                window.location.href = "http://" + host + "/exhibit/" + exhibitId;
+                window.location.reload();
                 break;
             }
             console.log(data);

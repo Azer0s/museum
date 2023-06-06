@@ -10,7 +10,7 @@ import (
 type ApplicationResolverService service.ApplicationResolverService
 
 func NewDockerHostApplicationResolverService(exhibitService service.ExhibitService, client *docker.Client) ApplicationResolverService {
-	return &impl.DockerHostApplicationResolverService{
+	return &impl.DockerExtHostApplicationResolverService{
 		ExhibitService: exhibitService,
 		IpCache:        cache.NewLRU[string, string](1000),
 		Client:         client,

@@ -1,0 +1,10 @@
+{
+  "main": "",
+  "scripts": {
+    "start": "node "
+  },
+  "type": "module",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

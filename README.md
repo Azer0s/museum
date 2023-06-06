@@ -15,6 +15,10 @@ mūsēum is available as a Docker image. You can find the image on Docker Hub. T
 * `ETCD_HOST`: The address of the etcd instance
 * `ETCD_BASE_KEY`: The base key to use for etcd (optional, defaults to `museum`)
 * `DOCKER_HOST`: The address of the Docker Swarm (optional, defaults to `unix:///var/run/docker.sock`)
+* `PROXY_MODE`: The mode to use for the proxy (optional, defaults to `swarm`)
+  * `swarm`: Use the Docker Swarm to start applications (assumes that mūsēum is running in a Docker Swarm)
+  * `swarm-ext`: Use the Docker Swarm to start applications (assumes that mūsēum is running outside the Docker Swarm)
+  * `dev-ext`: Same as `swarm-ext` but uses the docker-proxy (located in `dev/docker-proxy`) to connect to applications (assumes that mūsēum is running outside the Docker Swarm, this is only available if the `ENVIRONMENT` is set to `development`)
 * `HOSTNAME`: The hostname of the mūsēum instance (optional, defaults to `localhost`)
 * `PORT`: The port to listen on (optional, defaults to `8080`)
 * `JAEGER_HOST`: The address of the Jaeger instance (optional)
@@ -58,7 +62,10 @@ services:
 Applications are configured with so-called "exhibit" files. These files are simple YAML files that contain information on how to start the application.
 
 ```yaml
+spec: v1
 name: my-research-project
+expose: my-webapp
+lease: 1h
 objects:
   - name: my-database
     image: postgres
@@ -111,17 +118,20 @@ To access the applications, you need to know the path of the application. You ca
 
 ```bash
 $ museum list
-🏛️ my-research-project
-    👉 http://localhost:8080/exhibit/5b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
-    ⏲ Expires in 23 minutes 59 seconds from now
-    📦 exhibits:
-        📦 my-database (postgres:9.6)
-        📦 my-webapp (my-research-project:latest)
-🏛️ my-other-project
-    👉 http://localhost:8080/exhibit/3b3c0e3e-1b5a-4b1f-9b1f-1b5a4b1f9b1f
-    ⏲ Expires in 1 hour 11 minutes 16 seconds from now
-    📦 exhibits:
-        📦 my-perl-app (perl:5.30)
+───────────────────────────────────────────────────────────────────────────
+🧮  my-research-project
+    🔴  http://localhost:8080/exhibit/908cf715-72e8-44c7-a48d-d552b7a43918
+    ⏰‎  Expired 1 hour 46 minutes 54 seconds ago
+    🧺  exhibits:
+        📜  db (postgres:9.6)
+        📜  wordpress (my-research-project:latest)
+───────────────────────────────────────────────────────────────────────────
+🧮  my-other-project
+    🔴  http://localhost:8080/exhibit/8122d89c-e58d-48ca-a51d-27525b1210a3
+    ⏰‎  Expired 12 hours 27 minutes 43 seconds ago
+    🧺  exhibits:
+        📜  my-perl-app (perl:5.30)
+───────────────────────────────────────────────────────────────────────────
 ```
 
 ### Manually stopping an application

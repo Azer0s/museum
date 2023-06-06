@@ -27,11 +27,11 @@ func (wps *WildcardPathSegment) match(segment string) bool {
 	return true
 }
 
-type restPathSegment struct {
+type RestPathSegment struct {
 	Value string
 }
 
-func (rps *restPathSegment) match(segment string) bool {
+func (rps *RestPathSegment) match(segment string) bool {
 	return true
 }
 
@@ -57,7 +57,7 @@ func ConstructPath(path string) Path {
 				panic("illegal path format " + path)
 			}
 
-			segments = append(segments, &restPathSegment{})
+			segments = append(segments, &RestPathSegment{})
 		} else if dynamicRegex.MatchString(part) {
 			sub := dynamicRegex.FindStringSubmatch(part)
 			segments = append(segments, &WildcardPathSegment{
@@ -88,7 +88,7 @@ func (p Path) Match(path string) (Path, bool) {
 	}
 
 	parts := strings.Split(path[1:], "/")
-	if _, ok := p[len(p)-1].(*restPathSegment); !ok && len(parts) != len(p) {
+	if _, ok := p[len(p)-1].(*RestPathSegment); !ok && len(parts) != len(p) {
 		return nil, false
 	}
 
@@ -101,8 +101,8 @@ func (p Path) Match(path string) (Path, bool) {
 		}
 
 		// if we have a rest path segment, we're done
-		if _, ok := clone[i].(*restPathSegment); ok {
-			clone[i].(*restPathSegment).Value = strings.Join(parts[i:], "/")
+		if _, ok := clone[i].(*RestPathSegment); ok {
+			clone[i].(*RestPathSegment).Value = strings.Join(parts[i:], "/")
 			return clone, true
 		}
 	}

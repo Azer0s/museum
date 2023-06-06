@@ -55,6 +55,18 @@ func Run() {
 	ioc.RegisterSingleton[service.RuntimeInfoService](c, service.NewRuntimeInfoService)
 	ioc.RegisterSingleton[service.ExhibitService](c, service.NewExhibitService)
 	ioc.RegisterSingleton[service.LastAccessedService](c, service.NewLastAccessedService)
+
+	/*cfg := ioc.Get[config.Config](c)
+	TODO: implement proxy modes
+	switch cfg.ProxyMode {
+	case "swarm":
+		break
+	case "swarm-ext":
+		break
+	case "dev-ext":
+		break
+	}*/
+
 	ioc.RegisterSingleton[service.ApplicationResolverService](c, service.NewDockerHostApplicationResolverService)
 	ioc.RegisterSingleton[service.ApplicationProxyService](c, service.NewDockerApplicationProxyService)
 

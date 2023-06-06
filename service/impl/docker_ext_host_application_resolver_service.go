@@ -9,13 +9,13 @@ import (
 	"museum/util/cache"
 )
 
-type DockerHostApplicationResolverService struct {
+type DockerExtHostApplicationResolverService struct {
 	ExhibitService service.ExhibitService
 	IpCache        *cache.LRU[string, string]
 	Client         *docker.Client
 }
 
-func (d DockerHostApplicationResolverService) ResolveApplication(ctx context.Context, exhibitId string) (string, error) {
+func (d DockerExtHostApplicationResolverService) ResolveApplication(ctx context.Context, exhibitId string) (string, error) {
 	exhibit, err := d.ExhibitService.GetExhibitById(ctx, exhibitId)
 	if err != nil {
 		return "", err
@@ -49,7 +49,7 @@ func (d DockerHostApplicationResolverService) ResolveApplication(ctx context.Con
 	return ipStr, nil
 }
 
-func (d DockerHostApplicationResolverService) ResolveExhibitObject(exhibit domain.Exhibit, object domain.Object) (string, error) {
+func (d DockerExtHostApplicationResolverService) ResolveExhibitObject(exhibit domain.Exhibit, object domain.Object) (string, error) {
 	if exhibit.RuntimeInfo.Status != domain.Running {
 		return "", errors.New("exhibit is not running")
 	}

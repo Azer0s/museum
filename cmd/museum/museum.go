@@ -29,6 +29,14 @@ func printUsage() {
 	fmt.Println("\t- Warms up an exhibit")
 }
 
+func printSeparator() {
+	w := util.GetTerminalWidth() / 2
+	for i := 0; i < w; i++ {
+		fmt.Print("─")
+	}
+	fmt.Println()
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		printUsage()
@@ -77,7 +85,9 @@ func main() {
 			os.Exit(0)
 		}
 
-		for i, e := range exhibits {
+		for _, e := range exhibits {
+			printSeparator()
+
 			fmt.Println("🧮  " + e.Name)
 			fmt.Print("    ")
 			if e.RuntimeInfo.Status == domain.Running {
@@ -101,15 +111,9 @@ func main() {
 			for _, o := range e.Objects {
 				fmt.Println("        📜  " + o.Name + " (" + o.Image + ")")
 			}
-
-			if i != len(exhibits)-1 {
-				w := util.GetTerminalWidth()
-				for i := 0; i < w; i++ {
-					fmt.Print("─")
-				}
-				fmt.Println()
-			}
 		}
+
+		printSeparator()
 	case "warmup":
 		if len(os.Args) < 3 {
 			fmt.Println("❌ missing id argument")

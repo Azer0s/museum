@@ -5,5 +5,5 @@ import (
 )
 
 type ApplicationProxyService interface {
-	ForwardRequest(exhibitId string, res *router.Response, req *router.Request) error
+	ForwardRequest(exhibitId string, path string, res *router.Response, req *router.Request) error
 }

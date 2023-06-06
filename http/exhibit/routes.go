@@ -98,8 +98,14 @@ func proxyHandler(exhibitService service.ExhibitService, lastAccessedService ser
 			return
 		}
 
+		if req.RestPath == nil {
+			log.Warnw("no rest path provided", "requestId", req.RequestID, "exhibitId", app.Id)
+			res.WriteHeader(http.StatusNotFound)
+			return
+		}
+
 		// proxy the request
-		err = proxy.ForwardRequest(id, res, req)
+		err = proxy.ForwardRequest(id, *req.RestPath, res, req)
 		if err != nil {
 			log.Warnw("error proxying request", "error", err, "requestId", req.RequestID, "exhibitId", app.Id)
 			res.WriteHeader(http.StatusInternalServerError)

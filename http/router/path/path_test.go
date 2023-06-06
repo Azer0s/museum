@@ -117,8 +117,8 @@ func TestMatchStringWithRestPathSegment(t *testing.T) {
 		t.Errorf("Expected /foo/bar/baz/qux to match /foo/bar/>>")
 	}
 
-	if paths[2].(*restPathSegment).Value != "baz/qux" {
-		t.Errorf("Expected baz/qux to be baz/qux, got %s", paths[2].(*restPathSegment).Value)
+	if paths[2].(*RestPathSegment).Value != "baz/qux" {
+		t.Errorf("Expected baz/qux to be baz/qux, got %s", paths[2].(*RestPathSegment).Value)
 	}
 }
 
@@ -159,8 +159,8 @@ func TestMatchStringWithWildcardPathSegmentAndRestPathSegment(t *testing.T) {
 		t.Errorf("Expected q to be q, got %s", paths[2].(*WildcardPathSegment).Value)
 	}
 
-	if paths[3].(*restPathSegment).Value != "qux/a" {
-		t.Errorf("Expected qux/a to be qux/a, got %s", paths[3].(*restPathSegment).Value)
+	if paths[3].(*RestPathSegment).Value != "qux/a" {
+		t.Errorf("Expected qux/a to be qux/a, got %s", paths[3].(*RestPathSegment).Value)
 	}
 }
 

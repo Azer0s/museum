@@ -15,7 +15,7 @@ type DockerApplicationProxyService struct {
 	Log      *zap.SugaredLogger
 }
 
-func (d *DockerApplicationProxyService) ForwardRequest(exhibitId string, res *router.Response, req *router.Request) error {
+func (d *DockerApplicationProxyService) ForwardRequest(exhibitId string, path string, res *router.Response, req *router.Request) error {
 	// forward to exhibit
 	ip, err := d.Resolver.ResolveApplication(req.Context(), exhibitId)
 	if err != nil {
@@ -25,7 +25,7 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibitId string, res *ro
 	}
 
 	// proxy the request
-	proxyReq, err := http.NewRequest(req.Method, "http://"+ip, req.Body)
+	proxyReq, err := http.NewRequest(req.Method, "http://"+ip+"/"+path, req.Body)
 	if err != nil {
 		d.Log.Warnw("error creating proxy request", "error", err, "requestId", req.RequestID, "exhibitId", exhibitId)
 		res.WriteHeader(http.StatusInternalServerError)

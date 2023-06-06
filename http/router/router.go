@@ -36,10 +36,16 @@ func (r *Mux) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	for _, route := range r.routes {
 		if segments, ok := route.Path.Match(request.URL.Path); ok {
 			if route.Method == request.Method {
+				var restPath *string
+
 				pathParams := make(map[string]string)
 				for _, segment := range segments {
 					if w, ok := segment.(*path.WildcardPathSegment); ok {
 						pathParams[w.VariableName] = w.Value
+					}
+
+					if w, ok := segment.(*path.RestPathSegment); ok {
+						restPath = &w.Value
 					}
 				}
 
@@ -47,6 +53,7 @@ func (r *Mux) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 					Request:   request,
 					Params:    pathParams,
 					RequestID: requestId,
+					RestPath:  restPath,
 				})
 				return
 			}

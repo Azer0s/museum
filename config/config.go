@@ -1,5 +1,7 @@
 package config
 
+//TODO: add proxy mode
+
 type Config interface {
 	GetEtcdHost() string
 	GetEtcdBaseKey() string
