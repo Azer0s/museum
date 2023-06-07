@@ -156,6 +156,8 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 	}
 
 	//TODO: span
+	//TODO: check container address replacement in ENV
+	//TODO: pull images
 
 	defer func(globalLock util.RwErrMutex) {
 		err := globalLock.Unlock()

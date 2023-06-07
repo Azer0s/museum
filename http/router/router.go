@@ -35,7 +35,7 @@ func (r *Mux) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 
 	for _, route := range r.routes {
 		if segments, ok := route.Path.Match(request.URL.Path); ok {
-			if route.Method == request.Method {
+			if route.Method == request.Method || route.Method == "*" {
 				var restPath *string
 
 				pathParams := make(map[string]string)

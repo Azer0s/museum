@@ -1,6 +1,7 @@
 package service
 
 import (
+	docker "github.com/docker/docker/client"
 	"museum/service/impl"
 	service "museum/service/interface"
 )
@@ -17,8 +18,10 @@ func NewHttpLivecheck(applicationResolverService service.ApplicationResolverServ
 	})
 }
 
-func NewExecLivecheck() *ExecLivecheck {
-	return (*ExecLivecheck)(&impl.ExecLivecheck{})
+func NewExecLivecheck(client *docker.Client) *ExecLivecheck {
+	return (*ExecLivecheck)(&impl.ExecLivecheck{
+		Client: client,
+	})
 }
 
 func NewLivecheckFactoryService(httpLivecheck *HttpLivecheck, execLivecheck *ExecLivecheck) LivecheckFactoryService {

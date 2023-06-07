@@ -1,6 +1,7 @@
 package impl
 
 import (
+	"context"
 	"museum/domain"
 	service "museum/service/interface"
 	"net/http"
@@ -13,7 +14,7 @@ type HttpLivecheck struct {
 	ExhibitService             service.ExhibitService
 }
 
-func (h *HttpLivecheck) Check(exhibit domain.Exhibit, object domain.Object) (retry bool, err error) {
+func (h *HttpLivecheck) Check(_ context.Context, exhibit domain.Exhibit, object domain.Object) (retry bool, err error) {
 	exhibit.RuntimeInfo.Status = domain.Running
 
 	ip, err := h.ApplicationResolverService.ResolveExhibitObject(exhibit, object)

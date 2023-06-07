@@ -1,11 +1,12 @@
 spec: v1
 name: my-research-project
 expose: wordpress
+rewrite: true
 lease: 2h
 objects:
   - name: db
     image: mariadb
-    label: latest
+    label: 10.6.4-focal
     environment:
       MYSQL_ROOT_PASSWORD: wordpress
       MYSQL_DATABASE: wordpress
@@ -29,10 +30,12 @@ objects:
     label: latest
     port: 80
     environment:
-        WORDPRESS_DB_HOST: db
+        WORDPRESS_DB_HOST: "{{ @db }}"
         WORDPRESS_DB_USER: wordpress
         WORDPRESS_DB_PASSWORD: wordpress
         WORDPRESS_DB_NAME: wordpress
+        WORDPRESS_WEBSITE_URL: "http://{{ host }}"
+        WORDPRESS_WEBSITE_URL_WITHOUT_HTTP: "{{ host }}"
     livecheck:
       type: http
       config:

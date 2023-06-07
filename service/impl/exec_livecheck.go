@@ -1,14 +1,18 @@
 package impl
 
 import (
+	"context"
+	"github.com/docker/docker/api/types"
+	docker "github.com/docker/docker/client"
+	"io"
 	"museum/domain"
-	"os/exec"
 )
 
 type ExecLivecheck struct {
+	Client *docker.Client
 }
 
-func (e *ExecLivecheck) Check(exhibit domain.Exhibit, object domain.Object) (retry bool, err error) {
+func (e *ExecLivecheck) Check(ctx context.Context, exhibit domain.Exhibit, object domain.Object) (retry bool, err error) {
 	objectContainerName := exhibit.Name + "_" + object.Name
 	command, ok := object.Livecheck.Config["command"]
 
@@ -16,20 +20,29 @@ func (e *ExecLivecheck) Check(exhibit domain.Exhibit, object domain.Object) (ret
 		command = "true"
 	}
 
-	dockerCommand := []string{"docker", "exec", objectContainerName, "sh", "-c", command}
-	_, err = exec.Command(dockerCommand[0], dockerCommand[1:]...).Output()
+	exec, err := e.Client.ContainerExecCreate(ctx, objectContainerName, types.ExecConfig{
+		Cmd: []string{"sh", "-c", command},
+	})
 	if err != nil {
-		// if the error is a exit code error, we can check the exit code
-		// if it is not, we can't do anything
-		if exitError, ok := err.(*exec.ExitError); ok {
-			if exitError.ExitCode() != 0 {
-				retry = true
-				err = nil
-				return
-			}
-		}
-
 		return false, err
+	}
+
+	res, err := e.Client.ContainerExecAttach(ctx, exec.ID, types.ExecStartCheck{})
+
+	_, err = io.ReadAll(res.Reader)
+	if err != nil {
+		return false, err
+	}
+
+	res.Close()
+
+	inspect, err := e.Client.ContainerExecInspect(ctx, exec.ID)
+	if err != nil {
+		return false, err
+	}
+
+	if inspect.ExitCode != 0 {
+		return true, nil
 	}
 
 	return false, nil

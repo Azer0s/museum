@@ -1,7 +1,10 @@
 package service
 
-import "museum/domain"
+import (
+	"context"
+	"museum/domain"
+)
 
 type Livecheck interface {
-	Check(exhibit domain.Exhibit, object domain.Object) (retry bool, err error)
+	Check(ctx context.Context, exhibit domain.Exhibit, object domain.Object) (retry bool, err error)
 }

@@ -9,9 +9,12 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
+	"io"
+	"museum/config"
 	"museum/domain"
 	service "museum/service/interface"
 	"museum/util"
+	"regexp"
 	"strconv"
 	"time"
 )
@@ -25,6 +28,7 @@ type DockerApplicationProvisionerService struct {
 	LastAccessedService     service.LastAccessedService
 	Log                     *zap.SugaredLogger
 	Provider                trace.TracerProvider
+	Config                  config.Config
 }
 
 func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx context.Context, exhibit *domain.Exhibit) error {
@@ -40,75 +44,156 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 		}
 	}
 
+	containerNameMapping := make(map[string]string)
+
+	_, err := d.Client.NetworkInspect(ctx, exhibit.Name, types.NetworkInspectOptions{})
+	if err != nil {
+		if docker.IsErrNotFound(err) {
+			_, err := d.Client.NetworkCreate(ctx, exhibit.Name, types.NetworkCreate{
+				Driver: "bridge",
+			})
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
 	// create a container on the swarm for each object
 	for _, o := range sortedObjects {
-		containerConfig := &container.Config{
-			Image: o.Image,
-			Env:   make([]string, 0),
-		}
-
-		if o.Environment != nil {
-			for k, v := range o.Environment {
-				containerConfig.Env = append(containerConfig.Env, k+"="+v)
-			}
-		}
-
-		name := exhibit.Name + "_" + o.Name
-
-		ctx, span := d.Provider.
-			Tracer("docker provisioner").
-			Start(ctx, "startApplicationInsideLock", trace.WithAttributes(attribute.String("container", name), attribute.String("exhibitId", exhibit.Id)))
-		defer span.End()
-
-		span.AddEvent("inspecting container")
-
-		//check if container already exists
-		inspect, err := d.Client.ContainerInspect(ctx, name)
-		if err == nil && inspect.ID != "" {
-			d.Log.Warnw("container already exists", "container", name, "exhibitId", exhibit.Id)
-
-			err = d.doCleanup(inspect, exhibit, ctx)
-			if err != nil {
-				return err
-			}
-		}
-
-		span.AddEvent("creating container")
-
-		create, err := d.Client.ContainerCreate(ctx, containerConfig, nil, nil, nil, name)
+		err := d.startExhibitObject(ctx, exhibit, o, &containerNameMapping)
 		if err != nil {
 			//TODO: rollback
+			d.Log.Errorw("error starting exhibit object", "exhibit", exhibit.Name, "object", o.Name, "error", err)
 			return err
 		}
-
-		span.AddEvent("starting container")
-
-		d.Log.Debugw("starting container", "container", name, "exhibitId", exhibit.Id)
-		err = d.Client.ContainerStart(ctx, create.ID, types.ContainerStartOptions{})
-		if err != nil {
-			//TODO: rollback
-			d.Log.Errorw("error starting container", "container", name, "exhibitId", exhibit.Id, "error", err)
-			return err
-		}
-
-		if o.Name == exhibit.Expose {
-			exhibit.RuntimeInfo.Hostname = name
-		}
-
-		if o.Livecheck != nil {
-			span.AddEvent("doing livecheck")
-
-			err := d.doLivecheck(*exhibit, o)
-			if err != nil {
-				d.Log.Errorw("error doing livecheck", "exhibitId", exhibit.Id, "error", err)
-				return err
-			}
-		}
-
-		exhibit.RuntimeInfo.RelatedContainers = append(exhibit.RuntimeInfo.RelatedContainers, create.ID)
 	}
 
 	exhibit.RuntimeInfo.Status = domain.Running
+
+	return nil
+}
+
+func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Context, exhibit *domain.Exhibit, o domain.Object, containerIpMapping *map[string]string) error {
+	containerImage := o.Image + ":" + o.Label
+	//TODO: factor out into service
+	addressRegex, _ := regexp.Compile(`\{\{ *@(\w+) *}}`)
+	hostRegex, _ := regexp.Compile(`\{\{ *host *}}`)
+
+	containerConfig := &container.Config{
+		Image: containerImage,
+		Env:   make([]string, 0),
+	}
+
+	if o.Environment != nil {
+		for k, v := range o.Environment {
+			if v == "" {
+				continue
+			}
+
+			// replace {{ @objectName }} with the object name from the containerIpMapping
+			if addressRegex.MatchString(v) {
+				matches := addressRegex.FindStringSubmatch(v)
+				if len(matches) == 2 {
+					if name, ok := (*containerIpMapping)[matches[1]]; ok {
+						v = addressRegex.ReplaceAllString(v, name)
+					} else {
+						return errors.New("could not find object " + matches[1])
+					}
+				}
+			}
+
+			// replace {{ host }} with the hostname and the path
+			if hostRegex.MatchString(v) {
+				matches := hostRegex.FindStringSubmatch(v)
+				if len(matches) == 1 {
+					v = hostRegex.ReplaceAllString(v, d.Config.GetHostname()+":"+d.Config.GetPort()+"/exhibit/"+exhibit.Id)
+				}
+			}
+
+			containerConfig.Env = append(containerConfig.Env, k+"="+v)
+		}
+	}
+
+	name := exhibit.Name + "_" + o.Name
+
+	ctx, span := d.Provider.
+		Tracer("docker provisioner").
+		Start(ctx, "startApplicationInsideLock", trace.WithAttributes(attribute.String("container", name), attribute.String("exhibitId", exhibit.Id)))
+	defer span.End()
+
+	span.AddEvent("inspecting container")
+
+	//check if container already exists
+	inspect, err := d.Client.ContainerInspect(ctx, name)
+	if err == nil && inspect.ID != "" {
+		d.Log.Warnw("container already exists", "container", name, "exhibitId", exhibit.Id)
+
+		err = d.doCleanup(inspect, exhibit, ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	span.AddEvent("creating container")
+
+	pull, err := d.Client.ImagePull(ctx, containerImage, types.ImagePullOptions{})
+	if err != nil {
+		d.Log.Errorw("error pulling image", "image", containerImage, "exhibitId", exhibit.Id, "error", err)
+		return err
+	}
+
+	_, err = io.ReadAll(pull)
+	if err != nil {
+		d.Log.Errorw("error reading pull response", "image", containerImage, "exhibitId", exhibit.Id, "error", err)
+		return err
+	}
+
+	err = pull.Close()
+	if err != nil {
+		d.Log.Errorw("error closing pull response", "image", containerImage, "exhibitId", exhibit.Id, "error", err)
+		return err
+	}
+
+	create, err := d.Client.ContainerCreate(ctx, containerConfig, nil, nil, nil, name)
+	if err != nil {
+		d.Log.Errorw("error creating container", "container", name, "exhibitId", exhibit.Id, "error", err)
+		return err
+	}
+
+	span.AddEvent("starting container")
+
+	d.Log.Debugw("starting container", "container", name, "exhibitId", exhibit.Id)
+	err = d.Client.ContainerStart(ctx, create.ID, types.ContainerStartOptions{})
+	if err != nil {
+		d.Log.Errorw("error starting container", "container", name, "exhibitId", exhibit.Id, "error", err)
+		return err
+	}
+
+	if o.Name == exhibit.Expose {
+		exhibit.RuntimeInfo.Hostname = name
+	}
+
+	if o.Livecheck != nil {
+		span.AddEvent("doing livecheck")
+
+		err := d.doLivecheck(ctx, *exhibit, o)
+		if err != nil {
+			d.Log.Errorw("error doing livecheck", "exhibitId", exhibit.Id, "error", err)
+			return err
+		}
+	}
+
+	exhibit.RuntimeInfo.RelatedContainers = append(exhibit.RuntimeInfo.RelatedContainers, create.ID)
+
+	// get container ip
+	inspect, err = d.Client.ContainerInspect(ctx, create.ID)
+	if err != nil {
+		d.Log.Errorw("error inspecting container", "container", name, "exhibitId", exhibit.Id, "error", err)
+		return err
+	}
+	(*containerIpMapping)[o.Name] = inspect.NetworkSettings.Networks["bridge"].IPAddress
 
 	return nil
 }
@@ -144,7 +229,7 @@ func (d DockerApplicationProvisionerService) doCleanup(inspect types.ContainerJS
 	return nil
 }
 
-func (d DockerApplicationProvisionerService) doLivecheck(exhibit domain.Exhibit, object domain.Object) error {
+func (d DockerApplicationProvisionerService) doLivecheck(ctx context.Context, exhibit domain.Exhibit, object domain.Object) error {
 	var err error = nil
 	runtimeInfoCopy := *exhibit.RuntimeInfo
 	exhibit.RuntimeInfo = &runtimeInfoCopy
@@ -172,9 +257,14 @@ func (d DockerApplicationProvisionerService) doLivecheck(exhibit domain.Exhibit,
 
 	retry := true
 	for counter := 0; (retry && err == nil) && counter < maxRetries; counter++ {
-		retry, err = livecheck.Check(exhibit, object)
+		retry, err = livecheck.Check(ctx, exhibit, object)
 		time.Sleep(interval)
 	}
+
+	if retry || err != nil {
+		return errors.New("livecheck failed")
+	}
+
 	return nil
 }
 

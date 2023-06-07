@@ -4,6 +4,7 @@ type Exhibit struct {
 	Id          string              `json:"id"`
 	Name        string              `json:"name" yaml:"name"`
 	Expose      string              `json:"expose" yaml:"expose"`
+	Rewrite     *bool               `json:"rewrite" yaml:"rewrite"`
 	Objects     []Object            `json:"objects" yaml:"objects"`
 	Lease       string              `json:"lease" yaml:"lease"`
 	Order       []string            `json:"order" yaml:"order"`

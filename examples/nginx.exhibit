@@ -1,7 +1,7 @@
 spec: v1
 name: my-site
 expose: nginx
-lease: 2h
+lease: 20s
 objects:
   - name: nginx
     image: nginx

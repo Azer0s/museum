@@ -13,6 +13,14 @@ type Route struct {
 	Method  string
 }
 
+func Any(p string, handler MuxHandlerFunc) Route {
+	return Route{
+		Path:    path.ConstructPath(p),
+		Handler: handler,
+		Method:  "*",
+	}
+}
+
 func Get(p string, handler MuxHandlerFunc) Route {
 	return Route{
 		Path:    path.ConstructPath(p),

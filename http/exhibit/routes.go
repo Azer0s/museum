@@ -105,7 +105,7 @@ func proxyHandler(exhibitService service.ExhibitService, lastAccessedService ser
 		}
 
 		// proxy the request
-		err = proxy.ForwardRequest(id, *req.RestPath, res, req)
+		err = proxy.ForwardRequest(app, *req.RestPath, res, req)
 		if err != nil {
 			log.Warnw("error proxying request", "error", err, "requestId", req.RequestID, "exhibitId", app.Id)
 			res.WriteHeader(http.StatusInternalServerError)
@@ -123,5 +123,5 @@ func proxyHandler(exhibitService service.ExhibitService, lastAccessedService ser
 }
 
 func RegisterRoutes(r *router.Mux, exhibitService service.ExhibitService, lastAccessedService service.LastAccessedService, proxy service.ApplicationProxyService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, config config.Config, provider trace.TracerProvider) {
-	r.AddRoute(router.Get("/exhibit/{id}/>>", proxyHandler(exhibitService, lastAccessedService, proxy, provisioner, log, config, provider)))
+	r.AddRoute(router.Any("/exhibit/{id}/>>", proxyHandler(exhibitService, lastAccessedService, proxy, provisioner, log, config, provider)))
 }
