@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 	"museum/config"
 	"museum/domain"
-	"museum/http/router"
+	http2 "museum/http"
 	service "museum/service/interface"
 	"net/http"
 	"text/template"
@@ -24,10 +24,10 @@ type LoadingPageTemplate struct {
 	ExhibitId string
 }
 
-func proxyHandler(exhibitService service.ExhibitService, lastAccessedService service.LastAccessedService, proxy service.ApplicationProxyService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, c config.Config, provider trace.TracerProvider) router.MuxHandlerFunc {
+func proxyHandler(exhibitService service.ExhibitService, lastAccessedService service.LastAccessedService, proxy service.ApplicationProxyService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, c config.Config, provider trace.TracerProvider) http2.MuxHandlerFunc {
 	tmpl, _ := template.New("loading").Parse(string(loadingPage))
 
-	return func(res *router.Response, req *router.Request) {
+	return func(res *http2.Response, req *http2.Request) {
 		id, ok := req.Params["id"]
 		if !ok {
 			log.Warn("no id provided", "requestId", req.RequestID)
@@ -122,6 +122,6 @@ func proxyHandler(exhibitService service.ExhibitService, lastAccessedService ser
 	}
 }
 
-func RegisterRoutes(r *router.Mux, exhibitService service.ExhibitService, lastAccessedService service.LastAccessedService, proxy service.ApplicationProxyService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, config config.Config, provider trace.TracerProvider) {
-	r.AddRoute(router.Any("/exhibit/{id}/>>", proxyHandler(exhibitService, lastAccessedService, proxy, provisioner, log, config, provider)))
+func RegisterRoutes(r *http2.Mux, exhibitService service.ExhibitService, lastAccessedService service.LastAccessedService, proxy service.ApplicationProxyService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, config config.Config, provider trace.TracerProvider) {
+	r.AddRoute(http2.Any("/exhibit/{id}/>>", proxyHandler(exhibitService, lastAccessedService, proxy, provisioner, log, config, provider)))
 }

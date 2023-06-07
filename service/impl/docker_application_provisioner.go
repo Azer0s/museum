@@ -256,9 +256,10 @@ func (d DockerApplicationProvisionerService) doLivecheck(ctx context.Context, ex
 	}
 
 	retry := true
-	for counter := 0; (retry && err == nil) && counter < maxRetries; counter++ {
-		retry, err = livecheck.Check(ctx, exhibit, object)
+	retry, err = livecheck.Check(ctx, exhibit, object)
+	for counter := 1; (retry && err == nil) && counter < maxRetries; counter++ {
 		time.Sleep(interval)
+		retry, err = livecheck.Check(ctx, exhibit, object)
 	}
 
 	if retry || err != nil {

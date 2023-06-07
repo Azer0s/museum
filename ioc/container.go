@@ -168,7 +168,7 @@ func GenerateDependencyGraph(c *Container) string {
 	graph := make([]string, 0)
 	graph = append(graph, "digraph G {")
 
-	seenTypes := make(map[string]bool, 0)
+	seenTypes := make(map[string]bool)
 
 	for _, impl := range c.implMap {
 		for _, dep := range impl.dependencies {

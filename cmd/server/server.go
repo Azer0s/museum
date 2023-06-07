@@ -9,16 +9,15 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"museum/config"
-	proxy_mode "museum/config/proxy-mode"
-	"museum/http/api"
-	"museum/http/exhibit"
-	"museum/http/health"
-	"museum/http/router"
+	proxymode "museum/config/proxy-mode"
+	"museum/controller/api"
+	"museum/controller/exhibit"
+	"museum/controller/health"
+	"museum/http"
 	"museum/ioc"
 	"museum/observability"
 	"museum/persistence"
 	"museum/service"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -59,10 +58,10 @@ func Run() {
 
 	cfg := ioc.Get[config.Config](c)
 	switch cfg.GetProxyMode() {
-	case proxy_mode.ModeSwarm:
+	case proxymode.ModeSwarm:
 		ioc.RegisterSingleton[service.ApplicationResolverService](c, service.NewDockerHostApplicationResolverService)
 		break
-	case proxy_mode.ModeSwarmExt:
+	case proxymode.ModeSwarmExt:
 		ioc.RegisterSingleton[service.ApplicationResolverService](c, service.NewDockerExtHostApplicationResolverService)
 		break
 	}
@@ -80,12 +79,12 @@ func Run() {
 	ioc.RegisterSingleton[service.ExhibitCleanupService](c, service.NewExhibitCleanupService)
 
 	// register router and routes
-	ioc.RegisterSingleton[*router.Mux](c, router.NewMux)
+	ioc.RegisterSingleton[*http.Mux](c, http.NewMux)
 	ioc.ForFunc(c, health.RegisterRoutes)
 	ioc.ForFunc(c, exhibit.RegisterRoutes)
 	ioc.ForFunc(c, api.RegisterRoutes)
 
-	go ioc.ForFunc(c, func(router *router.Mux, config config.Config, log *zap.SugaredLogger) {
+	go ioc.ForFunc(c, func(router *http.Mux, config config.Config, log *zap.SugaredLogger) {
 		log.Infof("starting server on port %s", config.GetPort())
 		err := http.ListenAndServe(fmt.Sprintf(":%s", config.GetPort()), router)
 		if err != nil {

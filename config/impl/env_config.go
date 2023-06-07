@@ -1,7 +1,7 @@
 package impl
 
 import (
-	proxy_mode "museum/config/proxy-mode"
+	proxymode "museum/config/proxy-mode"
 )
 
 type EnvConfig struct {
@@ -44,12 +44,12 @@ func (e EnvConfig) GetEnvironment() string {
 	return e.Environment
 }
 
-func (e EnvConfig) GetProxyMode() proxy_mode.Mode {
+func (e EnvConfig) GetProxyMode() proxymode.Mode {
 	switch e.ProxyMode {
 	case "swarm":
-		return proxy_mode.ModeSwarm
+		return proxymode.ModeSwarm
 	case "swarm-ext":
-		return proxy_mode.ModeSwarmExt
+		return proxymode.ModeSwarmExt
 	default:
 		panic("invalid proxy mode" + e.ProxyMode)
 	}

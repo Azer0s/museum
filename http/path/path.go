@@ -31,7 +31,7 @@ type RestPathSegment struct {
 	Value string
 }
 
-func (rps *RestPathSegment) match(segment string) bool {
+func (rps *RestPathSegment) match(_ string) bool {
 	return true
 }
 

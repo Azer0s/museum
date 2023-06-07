@@ -10,6 +10,12 @@ func DecodeBody(body []byte, encoding string) (b []byte, err error) {
 	switch encoding {
 	case "gzip":
 		return decodeGzip(body)
+	case "deflate":
+		panic("deflate not implemented")
+	case "compress":
+		panic("compress not implemented")
+	case "br":
+		panic("br not implemented")
 	default:
 		return body, nil
 	}

@@ -33,16 +33,8 @@ func newEvent(eventType string, exhibit Exhibit) (cloudevents.Event, error) {
 	return event, nil
 }
 
-func NewCreateEvent(exhibit Exhibit) (cloudevents.Event, error) {
-	return newEvent(CreateEventType, exhibit)
-}
-
 func NewStartEvent(exhibit Exhibit) (cloudevents.Event, error) {
 	return newEvent(StartEventType, exhibit)
-}
-
-func NewStartingEvent(exhibit Exhibit) (cloudevents.Event, error) {
-	return newEvent(StartingEventType, exhibit)
 }
 
 func NewStopEvent(exhibit Exhibit) (cloudevents.Event, error) {
@@ -55,8 +47,4 @@ func NewDeleteEvent(exhibit Exhibit) (cloudevents.Event, error) {
 
 func NewLeaseRenewedEvent(exhibit Exhibit) (cloudevents.Event, error) {
 	return newEvent(LeaseRenewedEventType, exhibit)
-}
-
-func NewLeaseExpiredEvent(exhibit Exhibit) (cloudevents.Event, error) {
-	return newEvent(LeaseExpiredEventType, exhibit)
 }

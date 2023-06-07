@@ -1,7 +1,7 @@
-package router
+package http
 
 import (
-	"museum/http/router/path"
+	"museum/http/path"
 	"net/http"
 )
 

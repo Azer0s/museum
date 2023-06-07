@@ -8,13 +8,13 @@ import (
 	"go.uber.org/zap"
 	"io"
 	"museum/domain"
-	"museum/http/router"
+	http2 "museum/http"
 	"museum/service"
 	"net/http"
 )
 
-func getExhibits(exhibitService service.ExhibitService, log *zap.SugaredLogger, provider trace.TracerProvider) router.MuxHandlerFunc {
-	return func(res *router.Response, req *router.Request) {
+func getExhibits(exhibitService service.ExhibitService, log *zap.SugaredLogger, provider trace.TracerProvider) http2.MuxHandlerFunc {
+	return func(res *http2.Response, req *http2.Request) {
 		subCtx, span := provider.
 			Tracer("API request").
 			Start(req.Context(), "HTTP GET /api/exhibits/", trace.WithAttributes(attribute.String("requestId", req.RequestID)))
@@ -35,8 +35,8 @@ func getExhibits(exhibitService service.ExhibitService, log *zap.SugaredLogger, 
 	}
 }
 
-func getExhibitById(exhibitService service.ExhibitService, log *zap.SugaredLogger, provider trace.TracerProvider) router.MuxHandlerFunc {
-	return func(res *router.Response, req *router.Request) {
+func getExhibitById(exhibitService service.ExhibitService, log *zap.SugaredLogger, provider trace.TracerProvider) http2.MuxHandlerFunc {
+	return func(res *http2.Response, req *http2.Request) {
 		subCtx, span := provider.
 			Tracer("API request").
 			Start(req.Context(), "HTTP GET /api/exhibits/"+req.Params["id"], trace.WithAttributes(attribute.String("requestId", req.RequestID)))
@@ -58,8 +58,8 @@ func getExhibitById(exhibitService service.ExhibitService, log *zap.SugaredLogge
 	}
 }
 
-func createExhibit(exhibitService service.ExhibitService, log *zap.SugaredLogger, provider trace.TracerProvider) router.MuxHandlerFunc {
-	return func(res *router.Response, req *router.Request) {
+func createExhibit(exhibitService service.ExhibitService, log *zap.SugaredLogger, provider trace.TracerProvider) http2.MuxHandlerFunc {
+	return func(res *http2.Response, req *http2.Request) {
 		ctx, span := provider.
 			Tracer("API request").
 			Start(req.Context(), "HTTP POST /api/exhibits", trace.WithAttributes(attribute.String("requestId", req.RequestID)))
@@ -104,8 +104,8 @@ func createExhibit(exhibitService service.ExhibitService, log *zap.SugaredLogger
 	}
 }
 
-func handleEvents(handlerService service.ApplicationProvisionerHandlerService, log *zap.SugaredLogger, provider trace.TracerProvider) router.MuxHandlerFunc {
-	return func(res *router.Response, req *router.Request) {
+func handleEvents(handlerService service.ApplicationProvisionerHandlerService, log *zap.SugaredLogger, provider trace.TracerProvider) http2.MuxHandlerFunc {
+	return func(res *http2.Response, req *http2.Request) {
 		ctx, span := provider.
 			Tracer("API request").
 			Start(req.Context(), "HTTP POST /api/events", trace.WithAttributes(attribute.String("requestId", req.RequestID)))
@@ -146,9 +146,9 @@ func handleEvents(handlerService service.ApplicationProvisionerHandlerService, l
 	}
 }
 
-func RegisterRoutes(r *router.Mux, exhibitService service.ExhibitService, provisionerHandlerService service.ApplicationProvisionerHandlerService, log *zap.SugaredLogger, provider trace.TracerProvider) {
-	r.AddRoute(router.Get("/api/exhibits", getExhibits(exhibitService, log, provider)))
-	r.AddRoute(router.Get("/api/exhibits/{id}", getExhibitById(exhibitService, log, provider)))
-	r.AddRoute(router.Post("/api/exhibits", createExhibit(exhibitService, log, provider)))
-	r.AddRoute(router.Post("/api/events", handleEvents(provisionerHandlerService, log, provider)))
+func RegisterRoutes(r *http2.Mux, exhibitService service.ExhibitService, provisionerHandlerService service.ApplicationProvisionerHandlerService, log *zap.SugaredLogger, provider trace.TracerProvider) {
+	r.AddRoute(http2.Get("/api/exhibits", getExhibits(exhibitService, log, provider)))
+	r.AddRoute(http2.Get("/api/exhibits/{id}", getExhibitById(exhibitService, log, provider)))
+	r.AddRoute(http2.Post("/api/exhibits", createExhibit(exhibitService, log, provider)))
+	r.AddRoute(http2.Post("/api/events", handleEvents(provisionerHandlerService, log, provider)))
 }

@@ -1,11 +1,12 @@
-package router
+package http
 
 import (
 	"encoding/json"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
-	"museum/http/router/path"
+	"museum/http/path"
 	"net/http"
+	"strings"
 )
 
 type Mux struct {
@@ -49,11 +50,18 @@ func (r *Mux) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 					}
 				}
 
+				queryParams := strings.Split(request.URL.RequestURI(), "?")
+				var rawQueryParams *string
+				if len(queryParams) > 1 {
+					rawQueryParams = &queryParams[1]
+				}
+
 				route.Handler(&Response{writer}, &Request{
-					Request:   request,
-					Params:    pathParams,
-					RequestID: requestId,
-					RestPath:  restPath,
+					Request:        request,
+					Params:         pathParams,
+					RequestID:      requestId,
+					RestPath:       restPath,
+					RawQueryParams: rawQueryParams,
 				})
 				return
 			}

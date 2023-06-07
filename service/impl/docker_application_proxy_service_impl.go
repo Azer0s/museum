@@ -7,10 +7,10 @@ import (
 	"io"
 	"museum/config"
 	"museum/domain"
-	"museum/http/router"
+	"museum/http"
 	service "museum/service/interface"
 	"museum/util"
-	"net/http"
+	gohttp "net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -22,24 +22,27 @@ type DockerApplicationProxyService struct {
 	Config   config.Config
 }
 
-func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, path string, res *router.Response, req *router.Request) error {
+func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, path string, res *http.Response, req *http.Request) error {
 	// forward to exhibit
 	ip, err := d.Resolver.ResolveApplication(req.Context(), exhibit.Id)
 	if err != nil {
 		d.Log.Warnw("error resolving application", "error", err, "requestId", req.RequestID, "exhibitId", exhibit.Id)
-		res.WriteHeader(http.StatusInternalServerError)
+		res.WriteHeader(gohttp.StatusInternalServerError)
 		return err
 	}
 
-	//TODO: handle query params
 	//TODO: handle websocket
 	//TODO: handle SSE
+	queryParams := ""
+	if req.RawQueryParams != nil {
+		queryParams = "?" + *req.RawQueryParams
+	}
 
 	// proxy the request
-	proxyReq, err := http.NewRequest(req.Method, "http://"+ip+"/"+path, req.Body)
+	proxyReq, err := gohttp.NewRequest(req.Method, "http://"+ip+"/"+path+queryParams, req.Body)
 	if err != nil {
 		d.Log.Warnw("error creating proxy request", "error", err, "requestId", req.RequestID, "exhibitId", exhibit.Id)
-		res.WriteHeader(http.StatusInternalServerError)
+		res.WriteHeader(gohttp.StatusInternalServerError)
 		return err
 	}
 
@@ -47,11 +50,11 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 	proxyReq.Host = req.Host
 
 	//do request with timeout
-	var proxyRes *http.Response
+	var proxyRes *gohttp.Response
 	resultChan := make(chan error)
 	go func() {
 		var err error
-		proxyRes, err = http.DefaultClient.Do(proxyReq)
+		proxyRes, err = gohttp.DefaultClient.Do(proxyReq)
 		resultChan <- err
 	}()
 
@@ -59,12 +62,12 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 	case err := <-resultChan:
 		if err != nil {
 			d.Log.Warnw("error doing proxy request", "error", err, "requestId", req.RequestID, "exhibitId", exhibit.Id, "httpStatus", proxyRes.StatusCode)
-			res.WriteHeader(http.StatusInternalServerError)
+			res.WriteHeader(gohttp.StatusInternalServerError)
 			return err
 		}
 	case <-time.After(5 * time.Second):
 		d.Log.Warnw("timeout doing proxy request", "requestId", req.RequestID, "exhibitId", exhibit.Id)
-		res.WriteHeader(http.StatusInternalServerError)
+		res.WriteHeader(gohttp.StatusInternalServerError)
 		return errors.New("timeout doing proxy request")
 	}
 
@@ -72,7 +75,7 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 		// the application redirected us to a different path
 		// we need to redirect the user to the new path
 		res.Header().Set("Location", "/exhibit/"+exhibit.Id+proxyRes.Request.URL.Path)
-		res.WriteHeader(http.StatusTemporaryRedirect)
+		res.WriteHeader(gohttp.StatusTemporaryRedirect)
 		return nil
 	}
 
@@ -80,7 +83,7 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 	body, err := io.ReadAll(proxyRes.Body)
 	if err != nil {
 		d.Log.Warnw("error reading body", "error", err, "requestId", req.RequestID, "exhibitId", exhibit.Id)
-		res.WriteHeader(http.StatusInternalServerError)
+		res.WriteHeader(gohttp.StatusInternalServerError)
 		return err
 	}
 
@@ -88,7 +91,7 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 		err := d.rewriteHost(exhibit, proxyRes, &body)
 		if err != nil {
 			d.Log.Warnw("error rewriting host", "error", err, "requestId", req.RequestID, "exhibitId", exhibit.Id)
-			res.WriteHeader(http.StatusInternalServerError)
+			res.WriteHeader(gohttp.StatusInternalServerError)
 			return err
 		}
 		proxyRes.Header.Set("Content-Length", strconv.Itoa(len(body)))
@@ -103,14 +106,14 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 	_, err = res.Write(body)
 	if err != nil {
 		d.Log.Warnw("error writing body", "error", err, "requestId", req.RequestID, "exhibitId", exhibit.Id)
-		res.WriteHeader(http.StatusInternalServerError)
+		res.WriteHeader(gohttp.StatusInternalServerError)
 		return err
 	}
 
 	return nil
 }
 
-func (d *DockerApplicationProxyService) rewriteHost(exhibit domain.Exhibit, proxyRes *http.Response, body *[]byte) error {
+func (d *DockerApplicationProxyService) rewriteHost(exhibit domain.Exhibit, proxyRes *gohttp.Response, body *[]byte) error {
 	// get encoding from header
 	encoding := proxyRes.Header.Get("Content-Encoding")
 	bodyDecoded, err := util.DecodeBody(*body, encoding)
