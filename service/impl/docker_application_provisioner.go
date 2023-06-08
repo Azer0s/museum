@@ -15,6 +15,7 @@ import (
 	service "museum/service/interface"
 	"museum/util"
 	"strconv"
+	"syscall"
 	"time"
 )
 
@@ -231,10 +232,17 @@ func (d DockerApplicationProvisionerService) doLivecheck(ctx context.Context, ex
 	}
 
 	retry := true
-	retry, err = livecheck.Check(ctx, exhibit, object)
-	for counter := 1; (retry && err == nil) && counter < maxRetries; counter++ {
-		time.Sleep(interval)
+	for counter := 0; (retry && err == nil) && counter < maxRetries; counter++ {
 		retry, err = livecheck.Check(ctx, exhibit, object)
+
+		// if the error is that the connection was refused, we can retry
+		if err != nil && errors.Is(err, syscall.ECONNREFUSED) {
+			err = nil
+		}
+
+		if counter != 0 {
+			time.Sleep(interval)
+		}
 	}
 
 	if retry || err != nil {
