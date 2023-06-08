@@ -18,6 +18,24 @@ type RewriteServiceImpl struct {
 	Log    *zap.SugaredLogger
 }
 
+var placeholderHost = strings.ReplaceAll(uuid.New().String(), "-", "")
+
+func replaceHostInString(str string, searchHost string, replaceHost string) string {
+	// replace all occurrences of the searchHost with the replaceHost
+	// don't replace the replaceHost with the replaceHost
+	str = strings.ReplaceAll(str, replaceHost, placeholderHost)
+	str = strings.ReplaceAll(str, searchHost, replaceHost)
+	str = strings.ReplaceAll(str, placeholderHost, replaceHost)
+
+	return str
+}
+
+func (r *RewriteServiceImpl) getSearchAndReplaceHost(exhibit domain.Exhibit) (string, string) {
+	searchHost := r.Config.GetHostname() + ":" + r.Config.GetPort()
+	replaceHost := r.Config.GetHostname() + ":" + r.Config.GetPort() + "/exhibit/" + exhibit.Id
+	return searchHost, replaceHost
+}
+
 func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, res *gohttp.Response, body *[]byte) error {
 	// get encoding from header
 	encoding := res.Header.Get("Content-Encoding")
@@ -29,16 +47,11 @@ func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, res *
 
 	bodyStr := string(bodyDecoded)
 
-	// let's rewrite some paths in the body
-	searchHost := r.Config.GetHostname() + ":" + r.Config.GetPort()
-	replaceHost := r.Config.GetHostname() + ":" + r.Config.GetPort() + "/exhibit/" + exhibit.Id
+	//TODO: check if we have to rewrite the request headers from searchHost to replaceHost
 
-	// replace all occurrences of the searchHost with the replaceHost
-	// don't replace the replaceHost with the replaceHost
-	placeholderHost := uuid.New().String()
-	bodyStr = strings.ReplaceAll(bodyStr, replaceHost, placeholderHost)
-	bodyStr = strings.ReplaceAll(bodyStr, searchHost, replaceHost)
-	bodyStr = strings.ReplaceAll(bodyStr, placeholderHost, replaceHost)
+	// let's rewrite some paths in the body
+	searchHost, replaceHost := r.getSearchAndReplaceHost(exhibit)
+	bodyStr = replaceHostInString(bodyStr, searchHost, replaceHost)
 
 	*body, err = util.EncodeBody([]byte(bodyStr), encoding)
 	if err != nil {
@@ -50,6 +63,8 @@ func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, res *
 }
 
 func (r *RewriteServiceImpl) RewriteClientRequest(exhibit domain.Exhibit, req *http.Request, body *[]byte) error {
+	searchHost, replaceHost := r.getSearchAndReplaceHost(exhibit)
+
 	// get encoding from header
 	encoding := req.Header.Get("Content-Encoding")
 	bodyDecoded, err := util.DecodeBody(*body, encoding)
@@ -64,12 +79,12 @@ func (r *RewriteServiceImpl) RewriteClientRequest(exhibit domain.Exhibit, req *h
 		return err
 	}
 
-	fmt.Println(bodyStr)
-
-	referer := req.Header.Get("Referer")
-	if referer != "" {
-		//TODO: rewrite referer
+	bodyStr = replaceHostInString(bodyStr, replaceHost, searchHost)
+	for k, v := range req.Header {
+		req.Header.Set(k, replaceHostInString(strings.Join(v, ","), replaceHost, searchHost))
 	}
+
+	fmt.Println(bodyStr)
 
 	return nil
 }
