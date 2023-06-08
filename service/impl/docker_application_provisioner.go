@@ -14,21 +14,21 @@ import (
 	"museum/domain"
 	service "museum/service/interface"
 	"museum/util"
-	"regexp"
 	"strconv"
 	"time"
 )
 
 type DockerApplicationProvisionerService struct {
-	ExhibitService          service.ExhibitService
-	LivecheckFactoryService service.LivecheckFactoryService
-	Client                  *docker.Client
-	LockService             service.LockService
-	RuntimeInfoService      service.RuntimeInfoService
-	LastAccessedService     service.LastAccessedService
-	Log                     *zap.SugaredLogger
-	Provider                trace.TracerProvider
-	Config                  config.Config
+	ExhibitService              service.ExhibitService
+	LivecheckFactoryService     service.LivecheckFactoryService
+	EnvironmentTemplateResolver service.EnvironmentTemplateResolverService
+	Client                      *docker.Client
+	LockService                 service.LockService
+	RuntimeInfoService          service.RuntimeInfoService
+	LastAccessedService         service.LastAccessedService
+	Log                         *zap.SugaredLogger
+	Provider                    trace.TracerProvider
+	Config                      config.Config
 }
 
 func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx context.Context, exhibit *domain.Exhibit) error {
@@ -75,45 +75,20 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 	return nil
 }
 
-func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Context, exhibit *domain.Exhibit, o domain.Object, containerIpMapping *map[string]string) error {
+func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Context, exhibit *domain.Exhibit, o domain.Object, templateContainer *map[string]string) error {
 	containerImage := o.Image + ":" + o.Label
-	//TODO: factor out into service
-	addressRegex, _ := regexp.Compile(`\{\{ *@(\w+) *}}`)
-	hostRegex, _ := regexp.Compile(`\{\{ *host *}}`)
-
 	containerConfig := &container.Config{
 		Image: containerImage,
 		Env:   make([]string, 0),
 	}
 
-	if o.Environment != nil {
-		for k, v := range o.Environment {
-			if v == "" {
-				continue
-			}
+	err, env := d.EnvironmentTemplateResolver.FillEnvironmentTemplate(exhibit, o, templateContainer)
+	if err != nil {
+		return err
+	}
 
-			// replace {{ @objectName }} with the object name from the containerIpMapping
-			if addressRegex.MatchString(v) {
-				matches := addressRegex.FindStringSubmatch(v)
-				if len(matches) == 2 {
-					if name, ok := (*containerIpMapping)[matches[1]]; ok {
-						v = addressRegex.ReplaceAllString(v, name)
-					} else {
-						return errors.New("could not find object " + matches[1])
-					}
-				}
-			}
-
-			// replace {{ host }} with the hostname and the path
-			if hostRegex.MatchString(v) {
-				matches := hostRegex.FindStringSubmatch(v)
-				if len(matches) == 1 {
-					v = hostRegex.ReplaceAllString(v, d.Config.GetHostname()+":"+d.Config.GetPort()+"/exhibit/"+exhibit.Id)
-				}
-			}
-
-			containerConfig.Env = append(containerConfig.Env, k+"="+v)
-		}
+	for k, v := range env {
+		containerConfig.Env = append(containerConfig.Env, k+"="+v)
 	}
 
 	name := exhibit.Name + "_" + o.Name
@@ -193,7 +168,7 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 		d.Log.Errorw("error inspecting container", "container", name, "exhibitId", exhibit.Id, "error", err)
 		return err
 	}
-	(*containerIpMapping)[o.Name] = inspect.NetworkSettings.Networks["bridge"].IPAddress
+	(*templateContainer)[o.Name] = inspect.NetworkSettings.Networks["bridge"].IPAddress
 
 	return nil
 }

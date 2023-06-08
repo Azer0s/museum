@@ -8,9 +8,9 @@ import (
 	"go.uber.org/zap"
 	"museum/config"
 	"museum/domain"
-	http2 "museum/http"
+	"museum/http"
 	service "museum/service/interface"
-	"net/http"
+	gohttp "net/http"
 	"text/template"
 	"time"
 )
@@ -24,28 +24,28 @@ type LoadingPageTemplate struct {
 	ExhibitId string
 }
 
-func proxyHandler(exhibitService service.ExhibitService, lastAccessedService service.LastAccessedService, proxy service.ApplicationProxyService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, c config.Config, provider trace.TracerProvider) http2.MuxHandlerFunc {
+func proxyHandler(exhibitService service.ExhibitService, lastAccessedService service.LastAccessedService, proxy service.ApplicationProxyService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, c config.Config, provider trace.TracerProvider) http.MuxHandlerFunc {
 	tmpl, _ := template.New("loading").Parse(string(loadingPage))
 
-	return func(res *http2.Response, req *http2.Request) {
+	return func(res *http.Response, req *http.Request) {
 		id, ok := req.Params["id"]
 		if !ok {
 			log.Warn("no id provided", "requestId", req.RequestID)
-			res.WriteHeader(http.StatusBadRequest)
+			res.WriteHeader(gohttp.StatusBadRequest)
 			return
 		}
 
 		app, err := exhibitService.GetExhibitById(req.Context(), id)
 		if err != nil {
 			log.Warnw("error getting exhibit", "error", err, "requestId", req.RequestID, "exhibitId", id)
-			res.WriteHeader(http.StatusInternalServerError)
+			res.WriteHeader(gohttp.StatusInternalServerError)
 			return
 		}
 
 		// if the application is stopping, return a 503
 		if app.RuntimeInfo.Status == domain.Stopping {
 			log.Warnw("application is stopping, returning 503", "requestId", req.RequestID, "status", app.RuntimeInfo.Status, "exhibitId", app.Id)
-			res.WriteHeader(http.StatusServiceUnavailable)
+			res.WriteHeader(gohttp.StatusServiceUnavailable)
 			return
 		}
 
@@ -88,7 +88,7 @@ func proxyHandler(exhibitService service.ExhibitService, lastAccessedService ser
 			}
 
 			if err != nil {
-				res.WriteHeader(http.StatusInternalServerError)
+				res.WriteHeader(gohttp.StatusInternalServerError)
 				log.Warnw("error executing template", "error", err, "requestId", req.RequestID, "exhibitId", app.Id)
 				return
 			}
@@ -98,17 +98,11 @@ func proxyHandler(exhibitService service.ExhibitService, lastAccessedService ser
 			return
 		}
 
-		if req.RestPath == nil {
-			log.Warnw("no rest path provided", "requestId", req.RequestID, "exhibitId", app.Id)
-			res.WriteHeader(http.StatusNotFound)
-			return
-		}
-
 		// proxy the request
-		err = proxy.ForwardRequest(app, *req.RestPath, res, req)
+		err = proxy.ForwardRequest(app, req.RestPath, res, req)
 		if err != nil {
 			log.Warnw("error proxying request", "error", err, "requestId", req.RequestID, "exhibitId", app.Id)
-			res.WriteHeader(http.StatusInternalServerError)
+			res.WriteHeader(gohttp.StatusInternalServerError)
 			return
 		}
 
@@ -122,6 +116,6 @@ func proxyHandler(exhibitService service.ExhibitService, lastAccessedService ser
 	}
 }
 
-func RegisterRoutes(r *http2.Mux, exhibitService service.ExhibitService, lastAccessedService service.LastAccessedService, proxy service.ApplicationProxyService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, config config.Config, provider trace.TracerProvider) {
-	r.AddRoute(http2.Any("/exhibit/{id}/>>", proxyHandler(exhibitService, lastAccessedService, proxy, provisioner, log, config, provider)))
+func RegisterRoutes(r *http.Mux, exhibitService service.ExhibitService, lastAccessedService service.LastAccessedService, proxy service.ApplicationProxyService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, config config.Config, provider trace.TracerProvider) {
+	r.AddRoute(http.Any("/exhibit/{id}/>>", proxyHandler(exhibitService, lastAccessedService, proxy, provisioner, log, config, provider)))
 }

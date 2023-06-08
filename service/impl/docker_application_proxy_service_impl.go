@@ -2,24 +2,22 @@ package impl
 
 import (
 	"errors"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"io"
 	"museum/config"
 	"museum/domain"
 	"museum/http"
 	service "museum/service/interface"
-	"museum/util"
 	gohttp "net/http"
 	"strconv"
-	"strings"
 	"time"
 )
 
 type DockerApplicationProxyService struct {
-	Resolver service.ApplicationResolverService
-	Log      *zap.SugaredLogger
-	Config   config.Config
+	Resolver       service.ApplicationResolverService
+	RewriteService service.RewriteService
+	Log            *zap.SugaredLogger
+	Config         config.Config
 }
 
 func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, path string, res *http.Response, req *http.Request) error {
@@ -34,8 +32,8 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 	//TODO: handle websocket
 	//TODO: handle SSE
 	queryParams := ""
-	if req.RawQueryParams != nil {
-		queryParams = "?" + *req.RawQueryParams
+	if req.RawQueryParams != "" {
+		queryParams = "?" + req.RawQueryParams
 	}
 
 	// proxy the request
@@ -88,7 +86,7 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 	}
 
 	if exhibit.Rewrite != nil && *exhibit.Rewrite {
-		err := d.rewriteHost(exhibit, proxyRes, &body)
+		err := d.RewriteService.RewriteRequest(exhibit, proxyRes, &body)
 		if err != nil {
 			d.Log.Warnw("error rewriting host", "error", err, "requestId", req.RequestID, "exhibitId", exhibit.Id)
 			res.WriteHeader(gohttp.StatusInternalServerError)
@@ -107,37 +105,6 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 	if err != nil {
 		d.Log.Warnw("error writing body", "error", err, "requestId", req.RequestID, "exhibitId", exhibit.Id)
 		res.WriteHeader(gohttp.StatusInternalServerError)
-		return err
-	}
-
-	return nil
-}
-
-func (d *DockerApplicationProxyService) rewriteHost(exhibit domain.Exhibit, proxyRes *gohttp.Response, body *[]byte) error {
-	// get encoding from header
-	encoding := proxyRes.Header.Get("Content-Encoding")
-	bodyDecoded, err := util.DecodeBody(*body, encoding)
-	if err != nil {
-		d.Log.Warnw("error decoding body", "error", err, "requestId", exhibit.Id)
-		return err
-	}
-
-	bodyStr := string(bodyDecoded)
-
-	// let's rewrite some paths in the body
-	searchHost := d.Config.GetHostname() + ":" + d.Config.GetPort()
-	replaceHost := d.Config.GetHostname() + ":" + d.Config.GetPort() + "/exhibit/" + exhibit.Id
-
-	// replace all occurrences of the searchHost with the replaceHost
-	// don't replace the replaceHost with the replaceHost
-	placeholderHost := uuid.New().String()
-	bodyStr = strings.ReplaceAll(bodyStr, replaceHost, placeholderHost)
-	bodyStr = strings.ReplaceAll(bodyStr, searchHost, replaceHost)
-	bodyStr = strings.ReplaceAll(bodyStr, placeholderHost, replaceHost)
-
-	*body, err = util.EncodeBody([]byte(bodyStr), encoding)
-	if err != nil {
-		d.Log.Warnw("error encoding body", "error", err, "requestId", exhibit.Id)
 		return err
 	}
 

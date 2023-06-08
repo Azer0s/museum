@@ -9,10 +9,11 @@ import (
 
 type ApplicationProxyService service.ApplicationProxyService
 
-func NewDockerApplicationProxyService(resolver service.ApplicationResolverService, log *zap.SugaredLogger, config config.Config) ApplicationProxyService {
+func NewDockerApplicationProxyService(resolver service.ApplicationResolverService, rewriteService service.RewriteService, log *zap.SugaredLogger, config config.Config) ApplicationProxyService {
 	return &impl.DockerApplicationProxyService{
-		Resolver: resolver,
-		Log:      log,
-		Config:   config,
+		Resolver:       resolver,
+		RewriteService: rewriteService,
+		Log:            log,
+		Config:         config,
 	}
 }

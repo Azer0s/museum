@@ -37,7 +37,7 @@ func (r *Mux) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	for _, route := range r.routes {
 		if segments, ok := route.Path.Match(request.URL.Path); ok {
 			if route.Method == request.Method || route.Method == "*" {
-				var restPath *string
+				restPath := ""
 
 				pathParams := make(map[string]string)
 				for _, segment := range segments {
@@ -46,14 +46,14 @@ func (r *Mux) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 					}
 
 					if w, ok := segment.(*path.RestPathSegment); ok {
-						restPath = &w.Value
+						restPath = w.Value
 					}
 				}
 
 				queryParams := strings.Split(request.URL.RequestURI(), "?")
-				var rawQueryParams *string
+				rawQueryParams := ""
 				if len(queryParams) > 1 {
-					rawQueryParams = &queryParams[1]
+					rawQueryParams = queryParams[1]
 				}
 
 				route.Handler(&Response{writer}, &Request{

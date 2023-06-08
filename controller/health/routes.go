@@ -3,16 +3,16 @@ package health
 import (
 	_ "embed"
 	"go.uber.org/zap"
-	http2 "museum/http"
-	"net/http"
+	"museum/http"
+	gohttp "net/http"
 )
 
-func healthEndpoint(log *zap.SugaredLogger) func(res *http2.Response, req *http2.Request) {
-	return func(res *http2.Response, req *http2.Request) {
+func healthEndpoint(log *zap.SugaredLogger) func(res *http.Response, req *http.Request) {
+	return func(res *http.Response, req *http.Request) {
 		log.Debug("handling health endpoint request", "requestId", req.RequestID)
 
-		res.WriteHeader(http.StatusOK)
-		err := http2.WriteStatus(res, http2.Status{Status: "OK"})
+		res.WriteHeader(gohttp.StatusOK)
+		err := http.WriteStatus(res, http.Status{Status: "OK"})
 		if err != nil {
 			log.Errorw("error writing status", "error", err, "requestId", req.RequestID)
 			return
@@ -20,6 +20,6 @@ func healthEndpoint(log *zap.SugaredLogger) func(res *http2.Response, req *http2
 	}
 }
 
-func RegisterRoutes(r *http2.Mux, log *zap.SugaredLogger) {
-	r.AddRoute(http2.Get("/api/health", healthEndpoint(log)))
+func RegisterRoutes(r *http.Mux, log *zap.SugaredLogger) {
+	r.AddRoute(http.Get("/api/health", healthEndpoint(log)))
 }
