@@ -2,9 +2,11 @@ package service
 
 import (
 	"museum/domain"
+	"museum/http"
 	gohttp "net/http"
 )
 
 type RewriteService interface {
-	RewriteRequest(exhibit domain.Exhibit, proxyRes *gohttp.Response, body *[]byte) error
+	RewriteServerResponse(exhibit domain.Exhibit, res *gohttp.Response, body *[]byte) error
+	RewriteClientRequest(exhibit domain.Exhibit, req *http.Request, body *[]byte) error
 }
