@@ -49,14 +49,18 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 
 	_, err := d.Client.NetworkInspect(ctx, exhibit.Name, types.NetworkInspectOptions{})
 	if err != nil {
+		d.Log.Warnw("network not found, creating", "exhibit", exhibit.Name)
+
 		if docker.IsErrNotFound(err) {
 			_, err := d.Client.NetworkCreate(ctx, exhibit.Name, types.NetworkCreate{
 				Driver: "bridge",
 			})
 			if err != nil {
+				d.Log.Errorw("error creating network", "exhibit", exhibit.Name, "error", err)
 				return err
 			}
 		} else {
+			d.Log.Errorw("error inspecting network", "exhibit", exhibit.Name, "error", err)
 			return err
 		}
 	}
@@ -94,6 +98,8 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 
 	name := exhibit.Name + "_" + o.Name
 
+	d.Log.Debugw("starting object", "object", o.Name, "exhibit", exhibit.Name)
+
 	ctx, span := d.Provider.
 		Tracer("docker provisioner").
 		Start(ctx, "startApplicationInsideLock", trace.WithAttributes(attribute.String("container", name), attribute.String("exhibitId", exhibit.Id)))
@@ -108,6 +114,7 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 
 		err = d.doCleanup(inspect, exhibit, ctx)
 		if err != nil {
+			d.Log.Errorw("error cleaning up container", "container", name, "exhibitId", exhibit.Id, "error", err)
 			return err
 		}
 	}
