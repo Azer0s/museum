@@ -3,12 +3,14 @@ package impl
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"go.uber.org/zap"
 	"io"
 	"museum/config"
 	"museum/domain"
 	"museum/http"
 	service "museum/service/interface"
+	"museum/util"
 	gohttp "net/http"
 	"strconv"
 	"time"
@@ -88,7 +90,7 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 		return errors.New("timeout doing proxy request")
 	}
 
-	if proxyRes.Request.URL.Path != "/"+path {
+	if proxyRes.Request.URL.Path != "/"+path && proxyReq.Method == "GET" {
 		// the application redirected us to a different path
 		// we need to redirect the user to the new path
 		res.Header().Set("Location", "/exhibit/"+exhibit.Id+proxyRes.Request.URL.Path)
@@ -106,7 +108,7 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 
 	// rewrite response
 	if exhibit.Rewrite != nil && *exhibit.Rewrite {
-		err := d.RewriteService.RewriteServerResponse(exhibit, proxyRes, &resBody)
+		err = d.RewriteService.RewriteServerResponse(exhibit, proxyRes, &resBody)
 		if err != nil {
 			d.Log.Warnw("error rewriting host", "error", err, "requestId", req.RequestID, "exhibitId", exhibit.Id)
 			res.WriteHeader(gohttp.StatusInternalServerError)
@@ -127,6 +129,11 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 		res.WriteHeader(gohttp.StatusInternalServerError)
 		return err
 	}
+
+	fmt.Println("Request:")
+	util.PrintRequest(proxyReq)
+	fmt.Println("Response:")
+	util.PrintResponse(proxyRes)
 
 	return nil
 }

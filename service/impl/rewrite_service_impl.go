@@ -32,7 +32,7 @@ func replaceHostInString(str string, searchHost string, replaceHost string) stri
 
 func (r *RewriteServiceImpl) getSearchAndReplaceHost(exhibit domain.Exhibit) (string, string) {
 	searchHost := r.Config.GetHostname() + ":" + r.Config.GetPort()
-	replaceHost := r.Config.GetHostname() + ":" + r.Config.GetPort() + "/exhibit/" + exhibit.Id
+	replaceHost := "/exhibit/" + exhibit.Id
 	return searchHost, replaceHost
 }
 
@@ -50,8 +50,8 @@ func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, res *
 	//TODO: check if we have to rewrite the request headers from searchHost to replaceHost
 
 	// let's rewrite some paths in the body
-	searchHost, replaceHost := r.getSearchAndReplaceHost(exhibit)
-	bodyStr = replaceHostInString(bodyStr, searchHost, replaceHost)
+	searchHost, replacePath := r.getSearchAndReplaceHost(exhibit)
+	bodyStr = replaceHostInString(bodyStr, searchHost, searchHost+replacePath)
 
 	*body, err = util.EncodeBody([]byte(bodyStr), encoding)
 	if err != nil {
@@ -63,7 +63,7 @@ func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, res *
 }
 
 func (r *RewriteServiceImpl) RewriteClientRequest(exhibit domain.Exhibit, req *http.Request, body *[]byte) error {
-	searchHost, replaceHost := r.getSearchAndReplaceHost(exhibit)
+	_, replacePath := r.getSearchAndReplaceHost(exhibit)
 
 	// get encoding from header
 	encoding := req.Header.Get("Content-Encoding")
@@ -79,12 +79,27 @@ func (r *RewriteServiceImpl) RewriteClientRequest(exhibit domain.Exhibit, req *h
 		return err
 	}
 
-	bodyStr = replaceHostInString(bodyStr, replaceHost, searchHost)
+	bodyStr = strings.ReplaceAll(bodyStr, replacePath, "")
+
 	for k, v := range req.Header {
-		req.Header.Set(k, replaceHostInString(strings.Join(v, ","), replaceHost, searchHost))
+		req.Header.Set(k, strings.ReplaceAll(strings.Join(v, ","), replacePath, ""))
 	}
 
-	fmt.Println(bodyStr)
+	*body, err = util.EncodeBody([]byte(bodyStr), encoding)
+	if err != nil {
+		r.Log.Warnw("error encoding body", "error", err, "requestId", exhibit.Id)
+		return err
+	}
+
+	req.URL.Path = strings.ReplaceAll(req.URL.Path, replacePath, "")
+	req.RequestURI = strings.ReplaceAll(req.RequestURI, replacePath, "")
+
+	//TODO: replace host with docker IP and port
+
+	fmt.Println("req")
+	util.PrintRequest(req.Request)
 
 	return nil
 }
+
+//PM*^pvbtA*BWI9Mm(z

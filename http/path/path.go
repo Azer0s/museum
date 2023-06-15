@@ -49,7 +49,7 @@ func ConstructPath(path string) Path {
 	}
 
 	parts := strings.Split(path[1:], "/")
-	var segments []pathSegment
+	segments := make([]pathSegment, 0)
 	for i, part := range parts {
 		if part == ">>" {
 			// this can only be the last part of the path

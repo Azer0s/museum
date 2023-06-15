@@ -95,7 +95,12 @@ func Run() {
 	})
 
 	go ioc.ForFunc(c, func(log *zap.SugaredLogger, cleanupService service.ExhibitCleanupService) {
-		for {
+		cleanup := func() {
+			defer func() {
+				if err := recover(); err != nil {
+					log.Errorw("failed to cleanup exhibits", "error", err)
+				}
+			}()
 			<-time.After(10 * time.Second)
 
 			log.Info("checking for expired exhibits")
@@ -104,6 +109,10 @@ func Run() {
 			if err != nil {
 				log.Errorw("failed to cleanup exhibits", "error", err)
 			}
+		}
+
+		for {
+			cleanup()
 		}
 	})
 
