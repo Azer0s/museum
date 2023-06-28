@@ -66,7 +66,7 @@ func (e *EtcdState) GetRuntimeInfo(ctx context.Context, id string) (domain.Exhib
 
 	span.AddEvent("found runtime info for exhibit")
 
-	var runtimeInfo domain.ExhibitRuntimeInfo
+	runtimeInfo := domain.ExhibitRuntimeInfo{}
 	err = json.Unmarshal(resp.Kvs[0].Value, &runtimeInfo)
 	if err != nil {
 		return domain.ExhibitRuntimeInfo{}, err

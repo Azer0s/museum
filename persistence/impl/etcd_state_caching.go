@@ -22,7 +22,7 @@ func (e *EtcdState) handleExhibitEvent(exhibit domain.Exhibit, w etcd.WatchChan)
 			return true
 		}
 
-		var updatedExhibit domain.Exhibit
+		updatedExhibit := domain.Exhibit{}
 		err := json.Unmarshal(event.Kv.Value, &updatedExhibit)
 		if err != nil {
 			e.Log.Errorw("error unmarshalling exhibit", "error", err)
@@ -52,7 +52,7 @@ func (e *EtcdState) handleRuntimeInfoEvent(w etcd.WatchChan) bool {
 			return true
 		}
 
-		var updatedRuntimeInfo domain.ExhibitRuntimeInfo
+		updatedRuntimeInfo := domain.ExhibitRuntimeInfo{}
 		err := json.Unmarshal(event.Kv.Value, &updatedRuntimeInfo)
 		if err != nil {
 			e.Log.Errorw("error unmarshalling exhibit runtime info", "error", err)
@@ -88,7 +88,7 @@ func (e *EtcdState) handleNewRuntimeInfo(event *etcd.Event) {
 	e.RuntimeInfoCacheMu.Lock()
 	defer e.RuntimeInfoCacheMu.Unlock()
 
-	var newRuntimeInfo domain.ExhibitRuntimeInfo
+	newRuntimeInfo := domain.ExhibitRuntimeInfo{}
 	err := json.Unmarshal(event.Kv.Value, &newRuntimeInfo)
 	if err != nil {
 		e.Log.Errorw("error unmarshalling exhibit runtime info", "error", err)
@@ -107,7 +107,7 @@ func (e *EtcdState) handleNewExhibit(event *etcd.Event) {
 	e.ExhibitCacheMu.Lock()
 	defer e.ExhibitCacheMu.Unlock()
 
-	var newExhibit domain.Exhibit
+	newExhibit := domain.Exhibit{}
 	err := json.Unmarshal(event.Kv.Value, &newExhibit)
 	if err != nil {
 		e.Log.Errorw("error unmarshalling exhibit", "error", err)

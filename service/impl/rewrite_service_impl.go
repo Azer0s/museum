@@ -37,6 +37,11 @@ func (r *RewriteServiceImpl) getSearchAndReplaceHost(exhibit domain.Exhibit) (st
 }
 
 func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, res *gohttp.Response, body *[]byte) error {
+	// alright, so we have to rewrite the response
+	// "http://172.168.0.3:9090/foo/bar" changes to "http://localhost:8080/exhibit/123/foo/bar"
+	// "http://localhost:8080/foo/bar" changes to "http://localhost:8080/exhibit/123/foo/bar"
+	// "http://localhost:8080/exhibit/123/foo/bar" changes to "http://localhost:8080/exhibit/123/foo/bar" (not "http://localhost:8080/exhibit/123/exhibit/123/foo/bar")
+
 	// get encoding from header
 	encoding := res.Header.Get("Content-Encoding")
 	bodyDecoded, err := util.DecodeBody(*body, encoding)
@@ -63,6 +68,10 @@ func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, res *
 }
 
 func (r *RewriteServiceImpl) RewriteClientRequest(exhibit domain.Exhibit, req *http.Request, body *[]byte) error {
+	// alright, so we have to rewrite the request
+	// "http://localhost:8080/exhibit/123/foo/bar" changes to "http://ip:port/foo/bar"
+	// "http://localhost:8080/foo/bar" changes to "http://ip:port/foo/bar"
+
 	_, replacePath := r.getSearchAndReplaceHost(exhibit)
 
 	// get encoding from header
@@ -101,5 +110,3 @@ func (r *RewriteServiceImpl) RewriteClientRequest(exhibit domain.Exhibit, req *h
 
 	return nil
 }
-
-//PM*^pvbtA*BWI9Mm(z

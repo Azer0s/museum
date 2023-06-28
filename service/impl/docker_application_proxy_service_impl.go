@@ -57,6 +57,13 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 		queryParams = "?" + req.RawQueryParams
 	}
 
+	// create http client
+	client := gohttp.Client{
+		CheckRedirect: func(req *gohttp.Request, via []*gohttp.Request) error {
+			return gohttp.ErrUseLastResponse
+		},
+	}
+
 	// proxy the request
 	proxyReq, err := gohttp.NewRequest(req.Method, "http://"+ip+"/"+path+queryParams, bytes.NewReader(reqBody))
 	if err != nil {
@@ -73,7 +80,7 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 	resultChan := make(chan error)
 	go func() {
 		var err error
-		proxyRes, err = gohttp.DefaultClient.Do(proxyReq)
+		proxyRes, err = client.Do(proxyReq)
 		resultChan <- err
 	}()
 
@@ -89,6 +96,8 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 		res.WriteHeader(gohttp.StatusInternalServerError)
 		return errors.New("timeout doing proxy request")
 	}
+
+	// TODO: rewrite redirect
 
 	if proxyRes.Request.URL.Path != "/"+path && proxyReq.Method == "GET" {
 		// the application redirected us to a different path
@@ -108,6 +117,7 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 
 	// rewrite response
 	if exhibit.Rewrite != nil && *exhibit.Rewrite {
+		//TODO: rewrite IP addresses in response
 		err = d.RewriteService.RewriteServerResponse(exhibit, proxyRes, &resBody)
 		if err != nil {
 			d.Log.Warnw("error rewriting host", "error", err, "requestId", req.RequestID, "exhibitId", exhibit.Id)

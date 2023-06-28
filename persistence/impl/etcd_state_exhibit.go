@@ -84,7 +84,7 @@ func (e *EtcdState) GetExhibitById(ctx context.Context, id string) (domain.Exhib
 	}
 
 	span.AddEvent("found exhibit")
-	var exhibit domain.Exhibit
+	exhibit := domain.Exhibit{}
 	err = json.Unmarshal(resp.Kvs[0].Value, &exhibit)
 	if err != nil {
 		return domain.Exhibit{}, err
@@ -94,7 +94,7 @@ func (e *EtcdState) GetExhibitById(ctx context.Context, id string) (domain.Exhib
 }
 
 func (e *EtcdState) GetAllExhibits(ctx context.Context) []domain.Exhibit {
-	var exhibits []domain.Exhibit
+	exhibits := make([]domain.Exhibit, 0)
 
 	if e.ExhibitCache != nil {
 		e.ExhibitCacheMu.RLock()
@@ -129,7 +129,7 @@ func (e *EtcdState) GetAllExhibits(ctx context.Context) []domain.Exhibit {
 			continue
 		}
 
-		var exhibit domain.Exhibit
+		exhibit := domain.Exhibit{}
 		err := json.Unmarshal(kv.Value, &exhibit)
 		if err != nil {
 			continue

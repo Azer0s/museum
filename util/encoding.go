@@ -46,7 +46,7 @@ func EncodeBody(body []byte, encoding string) (b []byte, err error) {
 }
 
 func encodeGzip(body []byte) (b []byte, err error) {
-	var buffer bytes.Buffer
+	buffer := bytes.Buffer{}
 	gzipWriter := gzip.NewWriter(&buffer)
 
 	_, err = gzipWriter.Write(body)
