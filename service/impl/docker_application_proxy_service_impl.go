@@ -31,6 +31,18 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 		return err
 	}
 
+	port := ""
+	for _, o := range exhibit.Objects {
+		if exhibit.Expose == o.Name {
+			if o.Port == nil {
+				// we can panic here because this should have been caught by the validator
+				// if we ever get here, something is very wrong
+				d.Log.Fatalw("exhibit object has no port", "exhibitId", exhibit.Id, "exposedObject", o.Name)
+			}
+			port = *o.Port
+		}
+	}
+
 	//TODO: handle websocket
 	//TODO: handle SSE
 
@@ -45,7 +57,7 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 
 	// rewrite request
 	if exhibit.Rewrite != nil && *exhibit.Rewrite {
-		err = d.RewriteService.RewriteClientRequest(exhibit, ip, req, &reqBody)
+		err = d.RewriteService.RewriteClientRequest(exhibit, ip+":"+port, req, &reqBody)
 		if err != nil {
 			d.Log.Warnw("error rewriting request", "error", err, "requestId", req.RequestID, "exhibitId", exhibit.Id)
 			res.WriteHeader(gohttp.StatusInternalServerError)
@@ -66,7 +78,7 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 	}
 
 	// proxy the request
-	proxyReq, err := gohttp.NewRequest(req.Method, "http://"+ip+"/"+path+queryParams, bytes.NewReader(reqBody))
+	proxyReq, err := gohttp.NewRequest(req.Method, "http://"+ip+":"+port+"/"+path+queryParams, bytes.NewReader(reqBody))
 	if err != nil {
 		d.Log.Warnw("error creating proxy request", "error", err, "requestId", req.RequestID, "exhibitId", exhibit.Id)
 		res.WriteHeader(gohttp.StatusInternalServerError)
@@ -118,8 +130,7 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 
 	// rewrite response
 	if exhibit.Rewrite != nil && *exhibit.Rewrite {
-		//TODO: rewrite IP addresses in response
-		err = d.RewriteService.RewriteServerResponse(exhibit, ip, proxyRes, &resBody)
+		err = d.RewriteService.RewriteServerResponse(exhibit, ip+":"+port, proxyRes, &resBody)
 		if err != nil {
 			d.Log.Warnw("error rewriting host", "error", err, "requestId", req.RequestID, "exhibitId", exhibit.Id)
 			res.WriteHeader(gohttp.StatusInternalServerError)

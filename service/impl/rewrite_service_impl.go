@@ -25,12 +25,12 @@ func (r *RewriteServiceImpl) getFqhn() string {
 }
 
 /*
- FIXME: currently http://localhost:8080/exhibit/fd8006cd-39b9-4c8b-816b-50152bbef02b redirects
- to http://localhost:8080/localhost:8080/exhibit/fd8006cd-39b9-4c8b-816b-50152bbef02b/wp-admin/install.php
- (on the wordpress exhibit)
+ FIXME: currently http://localhost:8080/exhibit/fd8006cd-39b9-4c8b-816b-50152bbef02b/wp-login.php?redirect_to=http%3A%2F%2Flocalhost%3A8080%2Fwp-admin%2F&reauth=1
+ does not work, because the redirect_to parameter is not rewritten because we are not idiots that rewrite query params
+ but apparently WP devs are idiots that use query params for redirects :/
 */
 
-func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, ip string, res *gohttp.Response, body *[]byte) error {
+func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, hostname string, res *gohttp.Response, body *[]byte) error {
 	// alright, so we have to rewrite the response
 	// 1: "http://172.168.0.3:9090/foo/bar" changes to "http://localhost:8080/exhibit/123/foo/bar"
 	// 2: "http://localhost:8080/foo/bar" changes to "http://localhost:8080/exhibit/123/foo/bar"
@@ -47,7 +47,6 @@ func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, ip st
 		// rewrite the redirect url
 		redirectUrlStr := redirectUrl.String()
 		redirectUrlStr = strings.ReplaceAll(redirectUrlStr, r.getFqhn(), r.getFqhn()+"/exhibit/"+exhibit.Id)
-		redirectUrlStr = strings.ReplaceAll(redirectUrlStr, "//", "/")
 
 		res.Header.Set("Location", redirectUrlStr)
 	}
@@ -64,17 +63,15 @@ func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, ip st
 
 	// let's rewrite the IP case in the res headers
 	for k := range res.Header {
-		h := strings.ReplaceAll(res.Header.Get(k), ip, r.getFqhn()+"/exhibit/"+exhibit.Id)
-		h = strings.ReplaceAll(h, "//", "/")
+		h := strings.ReplaceAll(res.Header.Get(k), hostname, r.getFqhn()+"/exhibit/"+exhibit.Id)
 		res.Header.Set(k, h)
 	}
-	bodyStr = strings.ReplaceAll(bodyStr, ip, r.getFqhn()+"/exhibit/"+exhibit.Id)
+	bodyStr = strings.ReplaceAll(bodyStr, hostname, r.getFqhn()+"/exhibit/"+exhibit.Id)
 
 	// now let's rewrite every case 3 to an uuid,
 	// so we don't accidentally rewrite during case 2
 	for k := range res.Header {
 		h := strings.ReplaceAll(res.Header.Get(k), r.getFqhn()+"/exhibit/"+exhibit.Id, placeHolderHost)
-		h = strings.ReplaceAll(h, "//", "/")
 		res.Header.Set(k, h)
 	}
 	bodyStr = strings.ReplaceAll(bodyStr, r.getFqhn()+"/exhibit/"+exhibit.Id, placeHolderHost)
@@ -82,7 +79,6 @@ func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, ip st
 	// now let's rewrite every case 2
 	for k := range res.Header {
 		h := strings.ReplaceAll(res.Header.Get(k), r.getFqhn(), r.getFqhn()+"/exhibit/"+exhibit.Id)
-		h = strings.ReplaceAll(h, "//", "/")
 		res.Header.Set(k, h)
 	}
 	bodyStr = strings.ReplaceAll(bodyStr, r.getFqhn(), r.getFqhn()+"/exhibit/"+exhibit.Id)
@@ -90,17 +86,21 @@ func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, ip st
 	// now let's rewrite every uuid to the original path
 	for k := range res.Header {
 		h := strings.ReplaceAll(res.Header.Get(k), placeHolderHost, r.getFqhn()+"/exhibit/"+exhibit.Id)
-		h = strings.ReplaceAll(h, "//", "/")
 		res.Header.Set(k, h)
 	}
 	bodyStr = strings.ReplaceAll(bodyStr, placeHolderHost, r.getFqhn()+"/exhibit/"+exhibit.Id)
 
-	copy(*body, bodyStr)
+	b, err := util.EncodeBody([]byte(bodyStr), encoding)
+	if err != nil {
+		return err
+	}
+
+	copy(*body, b)
 
 	return nil
 }
 
-func (r *RewriteServiceImpl) RewriteClientRequest(exhibit domain.Exhibit, ip string, req *http.Request, body *[]byte) error {
+func (r *RewriteServiceImpl) RewriteClientRequest(exhibit domain.Exhibit, hostname string, req *http.Request, body *[]byte) error {
 	// alright, so we have to rewrite the request
 	// 1: "http://localhost:8080/exhibit/123/foo/bar" changes to "http://ip:port/foo/bar"
 	// 2: "http://localhost:8080/foo/bar" changes to "http://ip:port/foo/bar"
@@ -121,8 +121,7 @@ func (r *RewriteServiceImpl) RewriteClientRequest(exhibit domain.Exhibit, ip str
 
 	// let's rewrite case 1
 	for k := range req.Header {
-		h := strings.ReplaceAll(req.Header.Get(k), r.getFqhn()+"/exhibit/"+exhibit.Id, ip)
-		h = strings.ReplaceAll(h, "//", "/")
+		h := strings.ReplaceAll(req.Header.Get(k), r.getFqhn()+"/exhibit/"+exhibit.Id, hostname)
 		req.Header.Set(k, h)
 	}
 
@@ -131,9 +130,14 @@ func (r *RewriteServiceImpl) RewriteClientRequest(exhibit domain.Exhibit, ip str
 		r.Log.Warnw("error encoding body", "error", err, "requestId", exhibit.Id)
 		return err
 	}
-	bodyStr = strings.ReplaceAll(bodyStr, r.getFqhn(), ip)
+	bodyStr = strings.ReplaceAll(bodyStr, r.getFqhn(), hostname)
 
-	copy(*body, bodyStr)
+	b, err := util.EncodeBody([]byte(bodyStr), encoding)
+	if err != nil {
+		return err
+	}
+
+	copy(*body, b)
 
 	return nil
 }
