@@ -10,7 +10,6 @@ import (
 	"museum/domain"
 	"museum/http"
 	service "museum/service/interface"
-	"museum/util"
 	gohttp "net/http"
 	"strconv"
 	"time"
@@ -35,6 +34,8 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 	//TODO: handle websocket
 	//TODO: handle SSE
 
+	reqUrl := req.URL.String()
+
 	reqBody, err := io.ReadAll(req.Body)
 	if err != nil {
 		d.Log.Warnw("error reading request body", "error", err, "requestId", req.RequestID, "exhibitId", exhibit.Id)
@@ -44,7 +45,7 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 
 	// rewrite request
 	if exhibit.Rewrite != nil && *exhibit.Rewrite {
-		err = d.RewriteService.RewriteClientRequest(exhibit, req, &reqBody)
+		err = d.RewriteService.RewriteClientRequest(exhibit, ip, req, &reqBody)
 		if err != nil {
 			d.Log.Warnw("error rewriting request", "error", err, "requestId", req.RequestID, "exhibitId", exhibit.Id)
 			res.WriteHeader(gohttp.StatusInternalServerError)
@@ -118,7 +119,7 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 	// rewrite response
 	if exhibit.Rewrite != nil && *exhibit.Rewrite {
 		//TODO: rewrite IP addresses in response
-		err = d.RewriteService.RewriteServerResponse(exhibit, proxyRes, &resBody)
+		err = d.RewriteService.RewriteServerResponse(exhibit, ip, proxyRes, &resBody)
 		if err != nil {
 			d.Log.Warnw("error rewriting host", "error", err, "requestId", req.RequestID, "exhibitId", exhibit.Id)
 			res.WriteHeader(gohttp.StatusInternalServerError)
@@ -140,10 +141,7 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 		return err
 	}
 
-	fmt.Println("Request:")
-	util.PrintRequest(proxyReq)
-	fmt.Println("Response:")
-	util.PrintResponse(proxyRes)
+	fmt.Println("Rewriting " + reqUrl + " to " + proxyRes.Request.URL.String())
 
 	return nil
 }

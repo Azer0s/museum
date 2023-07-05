@@ -1,7 +1,6 @@
 package impl
 
 import (
-	"fmt"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"museum/config"
@@ -18,29 +17,13 @@ type RewriteServiceImpl struct {
 	Log    *zap.SugaredLogger
 }
 
-var placeholderHost = strings.ReplaceAll(uuid.New().String(), "-", "")
+var placeHolderHost = strings.ReplaceAll(uuid.New().String(), "-", "")
 
-func replaceHostInString(str string, searchHost string, replaceHost string) string {
-	// replace all occurrences of the searchHost with the replaceHost
-	// don't replace the replaceHost with the replaceHost
-	str = strings.ReplaceAll(str, replaceHost, placeholderHost)
-	str = strings.ReplaceAll(str, searchHost, replaceHost)
-	str = strings.ReplaceAll(str, placeholderHost, replaceHost)
-
-	return str
-}
-
-func (r *RewriteServiceImpl) getSearchAndReplaceHost(exhibit domain.Exhibit) (string, string) {
-	searchHost := r.Config.GetHostname() + ":" + r.Config.GetPort()
-	replaceHost := "/exhibit/" + exhibit.Id
-	return searchHost, replaceHost
-}
-
-func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, res *gohttp.Response, body *[]byte) error {
+func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, ip string, res *gohttp.Response, body *[]byte) error {
 	// alright, so we have to rewrite the response
-	// "http://172.168.0.3:9090/foo/bar" changes to "http://localhost:8080/exhibit/123/foo/bar"
-	// "http://localhost:8080/foo/bar" changes to "http://localhost:8080/exhibit/123/foo/bar"
-	// "http://localhost:8080/exhibit/123/foo/bar" changes to "http://localhost:8080/exhibit/123/foo/bar" (not "http://localhost:8080/exhibit/123/exhibit/123/foo/bar")
+	// 1: "http://172.168.0.3:9090/foo/bar" changes to "http://localhost:8080/exhibit/123/foo/bar"
+	// 2: "http://localhost:8080/foo/bar" changes to "http://localhost:8080/exhibit/123/foo/bar"
+	// 3: "http://localhost:8080/exhibit/123/foo/bar" changes to "http://localhost:8080/exhibit/123/foo/bar" (not "http://localhost:8080/exhibit/123/exhibit/123/foo/bar")
 
 	// get encoding from header
 	encoding := res.Header.Get("Content-Encoding")
@@ -52,27 +35,48 @@ func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, res *
 
 	bodyStr := string(bodyDecoded)
 
-	//TODO: check if we have to rewrite the request headers from searchHost to replaceHost
-
-	// let's rewrite some paths in the body
-	searchHost, replacePath := r.getSearchAndReplaceHost(exhibit)
-	bodyStr = replaceHostInString(bodyStr, searchHost, searchHost+replacePath)
-
-	*body, err = util.EncodeBody([]byte(bodyStr), encoding)
-	if err != nil {
-		r.Log.Warnw("error encoding body", "error", err, "requestId", exhibit.Id)
-		return err
+	// let's rewrite the IP case in the res headers
+	for k := range res.Header {
+		h := strings.ReplaceAll(res.Header.Get(k), ip, r.Config.GetHostname()+"/exhibit/"+exhibit.Id)
+		h = strings.ReplaceAll(h, "//", "/")
+		res.Header.Set(k, h)
 	}
+	bodyStr = strings.ReplaceAll(bodyStr, ip, r.Config.GetHostname()+"/exhibit/"+exhibit.Id)
+
+	// now let's rewrite every case 3 to an uuid,
+	// so we don't accidentally rewrite during case 2
+	for k := range res.Header {
+		h := strings.ReplaceAll(res.Header.Get(k), r.Config.GetHostname()+"/exhibit/"+exhibit.Id, placeHolderHost)
+		h = strings.ReplaceAll(h, "//", "/")
+		res.Header.Set(k, h)
+	}
+	bodyStr = strings.ReplaceAll(bodyStr, r.Config.GetHostname()+"/exhibit/"+exhibit.Id, placeHolderHost)
+
+	// now let's rewrite every case 2
+	for k := range res.Header {
+		h := strings.ReplaceAll(res.Header.Get(k), r.Config.GetHostname(), r.Config.GetHostname()+"/exhibit/"+exhibit.Id)
+		h = strings.ReplaceAll(h, "//", "/")
+		res.Header.Set(k, h)
+	}
+	bodyStr = strings.ReplaceAll(bodyStr, r.Config.GetHostname(), r.Config.GetHostname()+"/exhibit/"+exhibit.Id)
+
+	// now let's rewrite every uuid to the original path
+	for k := range res.Header {
+		h := strings.ReplaceAll(res.Header.Get(k), placeHolderHost, r.Config.GetHostname()+"/exhibit/"+exhibit.Id)
+		h = strings.ReplaceAll(h, "//", "/")
+		res.Header.Set(k, h)
+	}
+	bodyStr = strings.ReplaceAll(bodyStr, placeHolderHost, r.Config.GetHostname()+"/exhibit/"+exhibit.Id)
+
+	copy(*body, bodyStr)
 
 	return nil
 }
 
-func (r *RewriteServiceImpl) RewriteClientRequest(exhibit domain.Exhibit, req *http.Request, body *[]byte) error {
+func (r *RewriteServiceImpl) RewriteClientRequest(exhibit domain.Exhibit, ip string, req *http.Request, body *[]byte) error {
 	// alright, so we have to rewrite the request
-	// "http://localhost:8080/exhibit/123/foo/bar" changes to "http://ip:port/foo/bar"
-	// "http://localhost:8080/foo/bar" changes to "http://ip:port/foo/bar"
-
-	_, replacePath := r.getSearchAndReplaceHost(exhibit)
+	// 1: "http://localhost:8080/exhibit/123/foo/bar" changes to "http://ip:port/foo/bar"
+	// 2: "http://localhost:8080/foo/bar" changes to "http://ip:port/foo/bar"
 
 	// get encoding from header
 	encoding := req.Header.Get("Content-Encoding")
@@ -88,10 +92,11 @@ func (r *RewriteServiceImpl) RewriteClientRequest(exhibit domain.Exhibit, req *h
 		return err
 	}
 
-	bodyStr = strings.ReplaceAll(bodyStr, replacePath, "")
-
-	for k, v := range req.Header {
-		req.Header.Set(k, strings.ReplaceAll(strings.Join(v, ","), replacePath, ""))
+	// let's rewrite case 1
+	for k := range req.Header {
+		h := strings.ReplaceAll(req.Header.Get(k), r.Config.GetHostname()+"/exhibit/"+exhibit.Id, ip)
+		h = strings.ReplaceAll(h, "//", "/")
+		req.Header.Set(k, h)
 	}
 
 	*body, err = util.EncodeBody([]byte(bodyStr), encoding)
@@ -99,14 +104,9 @@ func (r *RewriteServiceImpl) RewriteClientRequest(exhibit domain.Exhibit, req *h
 		r.Log.Warnw("error encoding body", "error", err, "requestId", exhibit.Id)
 		return err
 	}
+	bodyStr = strings.ReplaceAll(bodyStr, r.Config.GetHostname(), ip)
 
-	req.URL.Path = strings.ReplaceAll(req.URL.Path, replacePath, "")
-	req.RequestURI = strings.ReplaceAll(req.RequestURI, replacePath, "")
-
-	//TODO: replace host with docker IP and port
-
-	fmt.Println("req")
-	util.PrintRequest(req.Request)
+	copy(*body, bodyStr)
 
 	return nil
 }
