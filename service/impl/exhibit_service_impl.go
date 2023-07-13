@@ -181,10 +181,11 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 
 	// check that exposed container has an exposed port
 	found := false
-	for _, c := range createExhibitRequest.Exhibit.Objects {
+	for i, c := range createExhibitRequest.Exhibit.Objects {
 		if c.Name == createExhibitRequest.Exhibit.Expose {
-			if c.Port != nil && *c.Port == "" {
-				return "", errors.New("exhibit must expose a container with an exposed port")
+			if c.Port == nil || *c.Port == "" {
+				createExhibitRequest.Exhibit.Objects[i].Port = new(string)
+				*createExhibitRequest.Exhibit.Objects[i].Port = "80"
 			}
 			found = true
 		}
