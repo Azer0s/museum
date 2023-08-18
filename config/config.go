@@ -5,6 +5,7 @@ import proxymode "museum/config/proxy-mode"
 type Config interface {
 	GetEtcdHost() string
 	GetEtcdBaseKey() string
+	GetNatsHost() string
 	GetDockerHost() string
 	GetHostname() string
 	GetPort() string

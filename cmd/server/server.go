@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	docker "github.com/docker/docker/client"
+	"github.com/nats-io/nats.go"
 	etcd "go.etcd.io/etcd/client/v3"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
@@ -35,6 +36,7 @@ func Run() {
 
 	// register config
 	ioc.RegisterSingleton[config.Config](c, config.NewEnvConfig)
+	cfg := ioc.Get[config.Config](c)
 
 	// register docker
 	ioc.RegisterSingleton[*docker.Client](c, service.NewDockerClient)
@@ -43,6 +45,24 @@ func Run() {
 	ioc.RegisterSingleton[tracesdk.SpanExporter](c, observability.NewSpanExporter)
 	ioc.RegisterSingleton[*observability.TracerProviderFactory](c, observability.NewTracerProviderFactory)
 	ioc.RegisterSingleton[trace.TracerProvider](c, observability.NewDefaultTracerProvider)
+
+	// register NATS
+	ioc.RegisterGenerator[*nats.Conn](c, func(config config.Config, log *zap.SugaredLogger) *nats.Conn {
+		conn, err := nats.Connect(config.GetNatsHost())
+		if err != nil {
+			log.Fatalw("failed to connect to NATS", "error", err)
+		}
+		return conn
+	})
+
+	// register eventing
+	switch cfg.GetNatsHost() {
+	case "":
+		ioc.RegisterSingleton[persistence.Eventing](c, persistence.NewNoopEventing)
+		break
+	default:
+		ioc.RegisterSingleton[persistence.Eventing](c, persistence.NewNatsEventing)
+	}
 
 	// register etcd
 	ioc.RegisterSingleton[*etcd.Client](c, persistence.NewEtcdClient)
@@ -58,7 +78,6 @@ func Run() {
 	ioc.RegisterSingleton[service.ExhibitService](c, service.NewExhibitService)
 	ioc.RegisterSingleton[service.LastAccessedService](c, service.NewLastAccessedService)
 
-	cfg := ioc.Get[config.Config](c)
 	switch cfg.GetProxyMode() {
 	case proxymode.ModeSwarm:
 		ioc.RegisterSingleton[service.ApplicationResolverService](c, service.NewDockerHostApplicationResolverService)
@@ -86,35 +105,38 @@ func Run() {
 	ioc.ForFunc(c, exhibit.RegisterRoutes)
 	ioc.ForFunc(c, api.RegisterRoutes)
 
-	go ioc.ForFunc(c, func(router *http.Mux, config config.Config, log *zap.SugaredLogger) {
-		log.Infof("starting server on port %s", config.GetPort())
-		err := http.ListenAndServe(fmt.Sprintf(":%s", config.GetPort()), router)
-		if err != nil {
-			panic(err)
-		}
-	})
-
-	go ioc.ForFunc(c, func(log *zap.SugaredLogger, cleanupService service.ExhibitCleanupService) {
-		cleanup := func() {
-			defer func() {
-				if err := recover(); err != nil {
-					log.Errorw("failed to cleanup exhibits", "error", err)
-				}
-			}()
-			<-time.After(10 * time.Second)
-
-			log.Info("checking for expired exhibits")
-
-			err := cleanupService.Cleanup()
-			if err != nil {
-				log.Errorw("failed to cleanup exhibits", "error", err)
-			}
-		}
-
-		for {
-			cleanup()
-		}
-	})
+	go ioc.ForFunc(c, startProxyServer)
+	go ioc.ForFunc(c, startExhibitCleanup)
 
 	<-ctx.Done()
+}
+
+func startExhibitCleanup(log *zap.SugaredLogger, cleanupService service.ExhibitCleanupService) {
+	cleanup := func() {
+		defer func() {
+			if err := recover(); err != nil {
+				log.Errorw("failed to cleanup exhibits", "error", err)
+			}
+		}()
+		<-time.After(10 * time.Second)
+
+		log.Info("checking for expired exhibits")
+
+		err := cleanupService.Cleanup()
+		if err != nil {
+			log.Errorw("failed to cleanup exhibits", "error", err)
+		}
+	}
+
+	for {
+		cleanup()
+	}
+}
+
+func startProxyServer(router *http.Mux, config config.Config, log *zap.SugaredLogger) {
+	log.Infof("starting server on port %s", config.GetPort())
+	err := http.ListenAndServe(fmt.Sprintf(":%s", config.GetPort()), router)
+	if err != nil {
+		panic(err)
+	}
 }

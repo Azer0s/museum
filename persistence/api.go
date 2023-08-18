@@ -34,3 +34,16 @@ func NewEtcdState(config config.Config, etcdClient *etcd.Client, providerFactory
 
 	return etcdState
 }
+
+func NewNatsEventing(config config.Config, log *zap.SugaredLogger) Eventing {
+	return &impl.NatsEventing{
+		Config: config,
+		Log:    log,
+	}
+}
+
+func NewNoopEventing(log *zap.SugaredLogger) Eventing {
+	return &impl.NoopEventing{
+		Log: log,
+	}
+}

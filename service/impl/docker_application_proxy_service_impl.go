@@ -34,12 +34,13 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 	port := ""
 	for _, o := range exhibit.Objects {
 		if exhibit.Expose == o.Name {
-			if o.Port == nil {
-				// we can panic here because this should have been caught by the validator
-				// if we ever get here, something is very wrong
-				d.Log.Fatalw("exhibit object has no port", "exhibitId", exhibit.Id, "exposedObject", o.Name)
+			if o.Port != nil {
+				port = *o.Port
+				break
 			}
-			port = *o.Port
+
+			port = "80"
+			break
 		}
 	}
 
