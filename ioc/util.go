@@ -101,12 +101,7 @@ func getFromType(c *Container, tt reflect.Type) any {
 func getDependencies(c *Container, params []reflect.Type) []reflect.Value {
 	arguments := make([]reflect.Value, len(params))
 	for i, param := range params {
-		// check that parameter is registered
-		if impl, ok := c.implMap[param.String()]; ok {
-			arguments[i] = reflect.ValueOf(impl.value)
-		} else {
-			panic("parameter " + param.String() + " is not registered")
-		}
+		arguments[i] = reflect.ValueOf(getFromType(c, param))
 	}
 
 	return arguments

@@ -48,12 +48,23 @@ func RegisterSingleton[T any](c *Container, creator any) {
 	tt := reflect.TypeOf(t)
 	tt = tt.Elem()
 
-	c.implMapMu.Lock()
-	defer c.implMapMu.Unlock()
+	c.implMapMu.RLock()
+	isRUnlock := false
+	defer func() {
+		if !isRUnlock {
+			c.implMapMu.RUnlock()
+		}
+	}()
 
 	reflectedCreator := reflect.ValueOf(creator)
 	checkCreatorFunc(tt, reflectedCreator)
 	impl, creatorParams := generateFromCreator(c, reflectedCreator)
+
+	isRUnlock = true
+	c.implMapMu.RUnlock()
+
+	c.implMapMu.Lock()
+	defer c.implMapMu.Unlock()
 
 	c.implMap[tt.String()] = addDebugDependencies(c, implementationDetails{
 		value: impl,

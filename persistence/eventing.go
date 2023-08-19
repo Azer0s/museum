@@ -1,10 +1,13 @@
 package persistence
 
-import "museum/domain"
+import (
+	"context"
+	"museum/domain"
+)
 
 type Eventing interface {
-	DispatchExhibitCreatedEvent(exhibit domain.Exhibit)
-	DispatchExhibitStartingEvent(exhibit domain.Exhibit, step domain.ExhibitStartingStep)
+	DispatchExhibitCreatedEvent(ctx context.Context, exhibit domain.Exhibit)
+	DispatchExhibitStartingEvent(ctx context.Context, exhibit domain.Exhibit, step domain.ExhibitStartingStep)
 
 	GetExhibitMetadataChannel() chan domain.ExhibitMetadata
 }

@@ -6,6 +6,7 @@ type Config interface {
 	GetEtcdHost() string
 	GetEtcdBaseKey() string
 	GetNatsHost() string
+	GetNatsBaseKey() string
 	GetDockerHost() string
 	GetHostname() string
 	GetPort() string

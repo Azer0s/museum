@@ -47,13 +47,7 @@ func Run() {
 	ioc.RegisterSingleton[trace.TracerProvider](c, observability.NewDefaultTracerProvider)
 
 	// register NATS
-	ioc.RegisterGenerator[*nats.Conn](c, func(config config.Config, log *zap.SugaredLogger) *nats.Conn {
-		conn, err := nats.Connect(config.GetNatsHost())
-		if err != nil {
-			log.Fatalw("failed to connect to NATS", "error", err)
-		}
-		return conn
-	})
+	ioc.RegisterGenerator[*nats.Conn](c, persistence.NewNatsClient)
 
 	// register eventing
 	switch cfg.GetNatsHost() {

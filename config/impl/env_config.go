@@ -8,6 +8,7 @@ type EnvConfig struct {
 	EtcdHost    string `env:"ETCD_HOST,required"`
 	EtcdBaseKey string `env:"ETCD_BASE_KEY" envDefault:"museum"`
 	NatsHost    string `env:"NATS_HOST"`
+	NatsBaseKey string `env:"NATS_BASE_KEY" envDefault:"museum"`
 	DockerHost  string `env:"DOCKER_HOST" envDefault:"unix:///var/run/docker.sock"`
 	Hostname    string `env:"HOSTNAME" envDefault:"localhost"`
 	Port        string `env:"PORT" envDefault:"8080"`
@@ -27,6 +28,10 @@ func (e EnvConfig) GetEtcdBaseKey() string {
 
 func (e EnvConfig) GetNatsHost() string {
 	return e.NatsHost
+}
+
+func (e EnvConfig) GetNatsBaseKey() string {
+	return e.NatsBaseKey
 }
 
 func (e EnvConfig) GetDockerHost() string {

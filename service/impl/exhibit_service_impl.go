@@ -17,6 +17,7 @@ import (
 
 type ExhibitServiceImpl struct {
 	State              persistence.State
+	Eventing           persistence.Eventing
 	RuntimeInfoService service.RuntimeInfoService
 	Provider           trace.TracerProvider
 	LockService        service.LockService
@@ -46,8 +47,6 @@ func (e ExhibitServiceImpl) GetExhibitById(ctx context.Context, id string) (doma
 		e.Log.Errorw("error locking exhibit lock", "error", err, "exhibitId", id)
 		return domain.Exhibit{}, err
 	}
-
-	//TODO: span
 
 	defer func(lock util.RwErrMutex) {
 		err := lock.RUnlock()
@@ -148,14 +147,21 @@ func (e ExhibitServiceImpl) DeleteExhibitById(ctx context.Context, id string) er
 }
 
 func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequest domain.CreateExhibit) (string, error) {
-	globalLock := e.LockService.GetRwLock(ctx, "all", "exhibits")
+	// create new trace span for event service
+	subCtx, span := e.Provider.
+		Tracer("exhibit-service").
+		Start(ctx, "CreateExhibit")
+	defer span.End()
+
+	e.Log.Infow("creating new exhibit", "exhibitId", createExhibitRequest.Exhibit.Id)
+
+	globalLock := e.LockService.GetRwLock(subCtx, "all", "exhibits")
 	err := globalLock.Lock()
 	if err != nil {
 		e.Log.Errorw("error locking global lock", "error", err)
 		return "", err
 	}
 
-	//TODO: span
 	//TODO: check container address replacement in ENV
 	//TODO: pull images
 
@@ -167,7 +173,7 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 	}(globalLock)
 
 	// check that exhibit name is unique
-	exhibits := e.State.GetAllExhibits(ctx)
+	exhibits := e.State.GetAllExhibits(subCtx)
 	for _, e := range exhibits {
 		if e.Name == createExhibitRequest.Exhibit.Name {
 			return "", errors.New("exhibit with name " + createExhibitRequest.Exhibit.Name + " already exists")
@@ -254,14 +260,6 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 		RelatedContainers: []string{},
 	}
 
-	// create new trace span for event service
-	subCtx, span := e.Provider.
-		Tracer("Orchestrate new exhibit").
-		Start(ctx, "handleCreateExhibit")
-	defer span.End()
-
-	e.Log.Infow("creating new exhibit", "exhibitId", createExhibitRequest.Exhibit.Id)
-
 	err = e.State.SetLastAccessed(subCtx, createExhibitRequest.Exhibit.Id, time.Now().Unix())
 	if err != nil {
 		return "", err
@@ -282,6 +280,7 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 		return "", err
 	}
 
+	e.Eventing.DispatchExhibitCreatedEvent(subCtx, createExhibitRequest.Exhibit)
 	e.Log.Debugw("created new exhibit", "exhibitId", createExhibitRequest.Exhibit.Id)
 
 	return createExhibitRequest.Exhibit.Id, nil
