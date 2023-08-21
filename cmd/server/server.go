@@ -117,6 +117,11 @@ func startExhibitCleanup(log *zap.SugaredLogger, cleanupService service.ExhibitC
 		c := exhibitService.Count()
 		log.Infow("checking for expired exhibits", "count", c)
 
+		if c == 0 {
+			log.Debugw("no exhibits to cleanup, skipping")
+			return
+		}
+
 		err := cleanupService.Cleanup()
 		if err != nil {
 			log.Errorw("failed to cleanup exhibits", "error", err)
