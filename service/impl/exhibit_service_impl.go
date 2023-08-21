@@ -285,3 +285,7 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 
 	return createExhibitRequest.Exhibit.Id, nil
 }
+
+func (e ExhibitServiceImpl) Count() int {
+	return len(e.State.GetAllExhibits(context.Background()))
+}

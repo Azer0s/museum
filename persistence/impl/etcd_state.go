@@ -48,7 +48,7 @@ func (e *EtcdState) Init() {
 
 	for _, exhibit := range exhibits {
 		e.ExhibitCache[exhibit.Id] = exhibit
-		e.watchExhibit(exhibit)
+		e.watchExhibit(exhibit.Id)
 	}
 
 	e.Log.Infow("retrieving all exhibit runtime info")

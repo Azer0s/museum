@@ -8,17 +8,22 @@ import (
 	"strings"
 )
 
-func (e *EtcdState) handleExhibitEvent(exhibit domain.Exhibit, w etcd.WatchChan) (deleted bool) {
+func (e *EtcdState) handleExhibitEvent(exhibitId string, w etcd.WatchChan) (deleted bool) {
 	events := <-w
 
 	e.ExhibitCacheMu.Lock()
 	defer e.ExhibitCacheMu.Unlock()
 
 	for _, event := range events.Events {
-		e.Log.Infow("received event for exhibit", "exhibitId", exhibit.Id, "event", event.Type.String())
+		if strings.Contains(string(event.Kv.Key), "lock") {
+			continue
+		}
+
+		e.Log.Infow("received event for exhibit", "exhibitId", exhibitId, "event", event.Type.String())
+
 		if event.Type == etcd.EventTypeDelete {
-			e.Log.Debugw("exhibit deleted", "exhibitId", exhibit.Id)
-			delete(e.ExhibitCache, exhibit.Id)
+			e.Log.Debugw("exhibit deleted", "exhibitId", exhibitId)
+			delete(e.ExhibitCache, exhibitId)
 			return true
 		}
 
@@ -29,8 +34,8 @@ func (e *EtcdState) handleExhibitEvent(exhibit domain.Exhibit, w etcd.WatchChan)
 			continue
 		}
 
-		e.Log.Debugw("exhibit updated", "exhibitId", exhibit.Id)
-		e.ExhibitCache[exhibit.Id] = updatedExhibit
+		e.Log.Debugw("exhibit updated", "exhibitId", exhibitId)
+		e.ExhibitCache[exhibitId] = updatedExhibit
 	}
 
 	return false
@@ -116,20 +121,21 @@ func (e *EtcdState) handleNewExhibit(event *etcd.Event) {
 
 	e.Log.Debugw("new exhibit created", "exhibitId", newExhibit.Id)
 	e.ExhibitCache[newExhibit.Id] = newExhibit
-	e.watchExhibit(newExhibit)
+	e.watchRuntimeInfo(newExhibit.Id)
+	e.watchExhibit(newExhibit.Id)
 	return
 }
 
-func (e *EtcdState) watchExhibit(exhibit domain.Exhibit) {
-	w := e.Client.Watch(context.Background(), "/"+e.Config.GetEtcdBaseKey()+"/"+exhibit.Id+"/"+"meta")
-	go func(ex domain.Exhibit, w etcd.WatchChan) {
+func (e *EtcdState) watchExhibit(exhibitId string) {
+	w := e.Client.Watch(context.Background(), "/"+e.Config.GetEtcdBaseKey()+"/"+exhibitId, etcd.WithPrefix())
+	go func(exhibitId string, w etcd.WatchChan) {
 		for {
-			deleted := e.handleExhibitEvent(ex, w)
+			deleted := e.handleExhibitEvent(exhibitId, w)
 			if deleted {
 				return
 			}
 		}
-	}(exhibit, w)
+	}(exhibitId, w)
 }
 
 func (e *EtcdState) watchRuntimeInfo(exhibitId string) {

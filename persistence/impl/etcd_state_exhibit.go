@@ -51,6 +51,9 @@ func (e *EtcdState) CreateExhibit(ctx context.Context, app domain.Exhibit) error
 		e.ExhibitCache[app.Id] = app
 	}
 
+	e.watchExhibit(app.Id)
+	e.watchRuntimeInfo(app.Id)
+
 	return nil
 }
 

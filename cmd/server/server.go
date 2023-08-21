@@ -105,7 +105,7 @@ func Run() {
 	<-ctx.Done()
 }
 
-func startExhibitCleanup(log *zap.SugaredLogger, cleanupService service.ExhibitCleanupService) {
+func startExhibitCleanup(log *zap.SugaredLogger, cleanupService service.ExhibitCleanupService, exhibitService service.ExhibitService) {
 	cleanup := func() {
 		defer func() {
 			if err := recover(); err != nil {
@@ -114,7 +114,8 @@ func startExhibitCleanup(log *zap.SugaredLogger, cleanupService service.ExhibitC
 		}()
 		<-time.After(10 * time.Second)
 
-		log.Info("checking for expired exhibits")
+		c := exhibitService.Count()
+		log.Info("checking for expired exhibits in ", c, " exhibits")
 
 		err := cleanupService.Cleanup()
 		if err != nil {

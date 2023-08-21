@@ -11,11 +11,11 @@ type NoopEventing struct {
 }
 
 func (n NoopEventing) DispatchExhibitCreatedEvent(ctx context.Context, exhibit domain.Exhibit) {
-	n.Log.Debugw("noop eventing dispatching exhibit created event", "exhibit", exhibit)
+	n.Log.Debugw("noop eventing dispatching exhibit created event", "exhibitId", exhibit.Id)
 }
 
 func (n NoopEventing) DispatchExhibitStartingEvent(ctx context.Context, exhibit domain.Exhibit, step domain.ExhibitStartingStep) {
-	n.Log.Debugw("noop eventing dispatching exhibit starting event", "exhibit", exhibit, "step", step)
+	n.Log.Debugw("noop eventing dispatching exhibit starting event", "exhibitId", exhibit.Id, "step", step)
 }
 
 func (n NoopEventing) GetExhibitMetadataChannel() chan domain.ExhibitMetadata {
