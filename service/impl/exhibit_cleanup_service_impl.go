@@ -18,13 +18,14 @@ type ExhibitCleanupServiceImpl struct {
 	Log                           *zap.SugaredLogger
 }
 
-func (e ExhibitCleanupServiceImpl) cleanupExhibit(exhibit domain.Exhibit, ctx context.Context) {
+func (e ExhibitCleanupServiceImpl) cleanupExhibit(exhibit domain.Exhibit, idx int, ctx context.Context) {
 	subCtx, span := e.Provider.
 		Tracer("cleanup-service").
 		Start(ctx, "CleanupExhibit("+exhibit.Id+")", trace.WithAttributes(attribute.String("exhibitId", exhibit.Id)))
 	defer span.End()
 
-	e.Log.Debugw("checking exhibit", "exhibitId", exhibit.Id)
+	count := e.ExhibitService.Count()
+	e.Log.Debugw("checking exhibit", "exhibitId", exhibit.Id, "current", idx+1, "total", count)
 
 	duration, err := time.ParseDuration(exhibit.Lease)
 	if err != nil {
@@ -62,12 +63,14 @@ func (e ExhibitCleanupServiceImpl) Cleanup() error {
 	span.AddEvent("getting all exhibits")
 
 	exhibits := e.ExhibitService.GetAllExhibits(ctx)
-	for _, exhibit := range exhibits {
+	for i, exhibit := range exhibits {
 		span.AddEvent("checking exhibit " + exhibit.Id)
-		e.cleanupExhibit(exhibit, ctx)
+		e.cleanupExhibit(exhibit, i, ctx)
 	}
 
 	//TODO: cleanup starting exhibits that have been starting for too long
+
+	e.Log.Debug("finished cleaning up exhibits")
 
 	return nil
 }

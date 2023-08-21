@@ -7,6 +7,6 @@ import (
 )
 
 type RewriteService interface {
-	RewriteServerResponse(exhibit domain.Exhibit, hostname string, res *gohttp.Response, body *[]byte) error
+	RewriteServerResponse(exhibit domain.Exhibit, hostname string, res *gohttp.Response, body *[]byte) (*[]byte, error)
 	RewriteClientRequest(exhibit domain.Exhibit, hostname string, req *http.Request, body *[]byte) error
 }

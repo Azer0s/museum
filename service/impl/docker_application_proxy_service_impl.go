@@ -3,7 +3,6 @@ package impl
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"go.uber.org/zap"
 	"io"
 	"museum/config"
@@ -46,8 +45,6 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 
 	//TODO: handle websocket
 	//TODO: handle SSE
-
-	reqUrl := req.URL.String()
 
 	reqBody, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -122,7 +119,16 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 	}
 
 	// read entire body
-	resBody, err := io.ReadAll(proxyRes.Body)
+	resBody, err := func() (*[]byte, error) {
+		// this might look a bit hacky, but it's actually
+		// a good way to shadow the resBody with a different type
+		resBody, err := io.ReadAll(proxyRes.Body)
+		if err != nil {
+			return nil, err
+		}
+		return &resBody, nil
+	}()
+
 	if err != nil {
 		d.Log.Warnw("error reading body", "error", err, "requestId", req.RequestID, "exhibitId", exhibit.Id)
 		res.WriteHeader(gohttp.StatusInternalServerError)
@@ -131,13 +137,13 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 
 	// rewrite response
 	if exhibit.Rewrite != nil && *exhibit.Rewrite {
-		err = d.RewriteService.RewriteServerResponse(exhibit, ip+":"+port, proxyRes, &resBody)
+		resBody, err = d.RewriteService.RewriteServerResponse(exhibit, ip+":"+port, proxyRes, resBody)
 		if err != nil {
 			d.Log.Warnw("error rewriting host", "error", err, "requestId", req.RequestID, "exhibitId", exhibit.Id)
 			res.WriteHeader(gohttp.StatusInternalServerError)
 			return err
 		}
-		proxyRes.Header.Set("Content-Length", strconv.Itoa(len(resBody)))
+		proxyRes.Header.Set("Content-Length", strconv.Itoa(len(*resBody)))
 	}
 
 	for k, v := range proxyRes.Header {
@@ -146,15 +152,12 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 
 	res.WriteHeader(proxyRes.StatusCode)
 
-	_, err = res.Write(resBody)
+	_, err = res.Write(*resBody)
 	if err != nil {
 		d.Log.Warnw("error writing body", "error", err, "requestId", req.RequestID, "exhibitId", exhibit.Id)
 		res.WriteHeader(gohttp.StatusInternalServerError)
 		return err
 	}
-
-	// sometimes the proxy.Request.URL is not correct (this looks like a memory thing, stack alloc vs heap alloc?)
-	fmt.Println("Rewriting " + reqUrl + " to " + proxyRes.Request.URL.String())
 
 	return nil
 }

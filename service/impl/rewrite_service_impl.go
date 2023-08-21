@@ -30,7 +30,7 @@ func (r *RewriteServiceImpl) getFqhn() string {
  but apparently WP devs are idiots that use query params for redirects :/
 */
 
-func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, hostname string, res *gohttp.Response, body *[]byte) error {
+func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, hostname string, res *gohttp.Response, body *[]byte) (*[]byte, error) {
 	// alright, so we have to rewrite the response
 	// 1: "http://172.168.0.3:9090/foo/bar" changes to "http://localhost:8080/exhibit/123/foo/bar"
 	// 2: "http://localhost:8080/foo/bar" changes to "http://localhost:8080/exhibit/123/foo/bar"
@@ -41,7 +41,7 @@ func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, hostn
 		// get the redirect url
 		redirectUrl, err := res.Location()
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		// rewrite the redirect url
@@ -56,7 +56,7 @@ func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, hostn
 	bodyDecoded, err := util.DecodeBody(*body, encoding)
 	if err != nil {
 		r.Log.Warnw("error decoding body", "error", err, "requestId", exhibit.Id)
-		return err
+		return nil, err
 	}
 
 	bodyStr := string(bodyDecoded)
@@ -92,12 +92,10 @@ func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, hostn
 
 	b, err := util.EncodeBody([]byte(bodyStr), encoding)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	copy(*body, b)
-
-	return nil
+	return &b, nil
 }
 
 func (r *RewriteServiceImpl) RewriteClientRequest(exhibit domain.Exhibit, hostname string, req *http.Request, body *[]byte) error {
