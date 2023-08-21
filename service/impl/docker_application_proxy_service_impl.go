@@ -90,7 +90,7 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 	proxyReq.Host = req.Host
 
 	//do request with timeout
-	var proxyRes *gohttp.Response
+	proxyRes := new(gohttp.Response)
 	resultChan := make(chan error)
 	go func() {
 		var err error
@@ -153,6 +153,7 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 		return err
 	}
 
+	// sometimes the proxy.Request.URL is not correct (this looks like a memory thing, stack alloc vs heap alloc?)
 	fmt.Println("Rewriting " + reqUrl + " to " + proxyRes.Request.URL.String())
 
 	return nil
