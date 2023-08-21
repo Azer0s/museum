@@ -95,14 +95,18 @@ func (p Path) Match(path string) (Path, bool) {
 	clone := make([]pathSegment, len(p))
 	copy(clone, p)
 
+	if r, ok := clone[len(clone)-1].(*RestPathSegment); ok {
+		r.Value = *new(string)
+	}
+
 	for i, part := range parts {
 		if !clone[i].match(part) {
 			return nil, false
 		}
 
 		// if we have a rest path segment, we're done
-		if _, ok := clone[i].(*RestPathSegment); ok {
-			clone[i].(*RestPathSegment).Value = strings.Join(parts[i:], "/")
+		if r, ok := clone[i].(*RestPathSegment); ok {
+			r.Value = strings.Join(parts[i:], "/")
 			return clone, true
 		}
 	}

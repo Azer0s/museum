@@ -15,16 +15,7 @@ func (e *EtcdState) handleExhibitEvent(exhibitId string, w etcd.WatchChan) (dele
 	defer e.ExhibitCacheMu.Unlock()
 
 	for _, event := range events.Events {
-		if strings.Contains(string(event.Kv.Key), "lock") {
-			continue
-		}
-
-		//HACK: this is a hack to prevent the exhibit from being reloaded when the runtime_info is updated
-		if !strings.HasSuffix(string(event.Kv.Key), "meta") {
-			continue
-		}
-
-		e.Log.Infow("received event for exhibit", "exhibitId", exhibitId, "event", event.Type.String())
+		e.Log.Infow("received meta event for exhibit", "exhibitId", exhibitId, "event", event.Type.String())
 
 		if event.Type == etcd.EventTypeDelete {
 			e.Log.Debugw("exhibit deleted", "exhibitId", exhibitId)
@@ -132,7 +123,7 @@ func (e *EtcdState) handleNewExhibit(event *etcd.Event) {
 }
 
 func (e *EtcdState) watchExhibit(exhibitId string) {
-	w := e.Client.Watch(context.Background(), "/"+e.Config.GetEtcdBaseKey()+"/"+exhibitId, etcd.WithPrefix())
+	w := e.Client.Watch(context.Background(), "/"+e.Config.GetEtcdBaseKey()+"/"+exhibitId+"/meta", etcd.WithPrefix())
 	go func(exhibitId string, w etcd.WatchChan) {
 		for {
 			deleted := e.handleExhibitEvent(exhibitId, w)
