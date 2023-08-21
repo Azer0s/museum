@@ -90,7 +90,7 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 	proxyReq.Host = req.Host
 
 	//do request with timeout
-	var proxyRes *gohttp.Response
+	proxyRes := new(gohttp.Response)
 	resultChan := make(chan error)
 	go func() {
 		var err error

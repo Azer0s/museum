@@ -19,6 +19,11 @@ func (e *EtcdState) handleExhibitEvent(exhibitId string, w etcd.WatchChan) (dele
 			continue
 		}
 
+		//HACK: this is a hack to prevent the exhibit from being reloaded when the runtime_info is updated
+		if !strings.HasSuffix(string(event.Kv.Key), "meta") {
+			continue
+		}
+
 		e.Log.Infow("received event for exhibit", "exhibitId", exhibitId, "event", event.Type.String())
 
 		if event.Type == etcd.EventTypeDelete {
