@@ -25,3 +25,14 @@ func (e Exhibit) ToDto() ExhibitDto {
 		Objects:     objects,
 	}
 }
+
+func (e Exhibit) GetTotalSteps() int {
+	steps := 0
+	for _, object := range e.Objects {
+		steps += 4
+		if object.Livecheck != nil {
+			steps++
+		}
+	}
+	return steps
+}

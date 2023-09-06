@@ -12,6 +12,7 @@ import (
 	"io"
 	"museum/config"
 	"museum/domain"
+	"museum/persistence"
 	service "museum/service/interface"
 	"museum/util"
 	"strconv"
@@ -27,6 +28,7 @@ type DockerApplicationProvisionerService struct {
 	LockService                 service.LockService
 	RuntimeInfoService          service.RuntimeInfoService
 	LastAccessedService         service.LastAccessedService
+	Eventing                    persistence.Eventing
 	Log                         *zap.SugaredLogger
 	Provider                    trace.TracerProvider
 	Config                      config.Config
@@ -65,14 +67,18 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 		}
 	}
 
+	stepCount := 1
+
 	// create a container on the swarm for each object
+	idx := 0
 	for _, o := range sortedObjects {
-		err := d.startExhibitObject(ctx, exhibit, o, &containerNameMapping)
+		err := d.startExhibitObject(ctx, exhibit, o, idx, &stepCount, &containerNameMapping)
 		if err != nil {
 			//TODO: rollback
 			d.Log.Errorw("error starting exhibit object", "exhibit", exhibit.Name, "object", o.Name, "error", err)
 			return err
 		}
+		idx++
 	}
 
 	exhibit.RuntimeInfo.Status = domain.Running
@@ -80,7 +86,7 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 	return nil
 }
 
-func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Context, exhibit *domain.Exhibit, o domain.Object, templateContainer *map[string]string) error {
+func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Context, exhibit *domain.Exhibit, o domain.Object, idx int, stepCount *int, templateContainer *map[string]string) error {
 	containerImage := o.Image + ":" + o.Label
 	containerConfig := &container.Config{
 		Image: containerImage,
@@ -106,6 +112,10 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 	defer span.End()
 
 	span.AddEvent("inspecting container")
+	d.Eventing.DispatchExhibitStartingEvent(ctx, *exhibit, stepCount, domain.ExhibitStartingStep{
+		Object: idx,
+		Step:   domain.ObjectStartingStepClean,
+	})
 
 	//check if container already exists
 	inspect, err := d.Client.ContainerInspect(ctx, name)
@@ -120,6 +130,10 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 	}
 
 	span.AddEvent("creating container")
+	d.Eventing.DispatchExhibitStartingEvent(ctx, *exhibit, stepCount, domain.ExhibitStartingStep{
+		Object: idx,
+		Step:   domain.ObjectStartingStepCreate,
+	})
 
 	pull, err := d.Client.ImagePull(ctx, containerImage, types.ImagePullOptions{})
 	if err != nil {
@@ -146,6 +160,10 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 	}
 
 	span.AddEvent("starting container")
+	d.Eventing.DispatchExhibitStartingEvent(ctx, *exhibit, stepCount, domain.ExhibitStartingStep{
+		Object: idx,
+		Step:   domain.ObjectStartingStepStart,
+	})
 
 	d.Log.Debugw("starting container", "container", name, "exhibitId", exhibit.Id)
 	err = d.Client.ContainerStart(ctx, create.ID, types.ContainerStartOptions{})
@@ -160,6 +178,10 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 
 	if o.Livecheck != nil {
 		span.AddEvent("doing livecheck")
+		d.Eventing.DispatchExhibitStartingEvent(ctx, *exhibit, stepCount, domain.ExhibitStartingStep{
+			Object: idx,
+			Step:   domain.ObjectStartingStepLivecheck,
+		})
 
 		err := d.doLivecheck(ctx, *exhibit, o)
 		if err != nil {
@@ -177,6 +199,11 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 		return err
 	}
 	(*templateContainer)[o.Name] = inspect.NetworkSettings.Networks["bridge"].IPAddress
+
+	d.Eventing.DispatchExhibitStartingEvent(ctx, *exhibit, stepCount, domain.ExhibitStartingStep{
+		Object: idx,
+		Step:   domain.ObjectStartingStepReady,
+	})
 
 	return nil
 }

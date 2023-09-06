@@ -2,6 +2,10 @@ package domain
 
 type ObjectStartingStep int
 
+func (o ObjectStartingStep) String() string {
+	return [...]string{"clean", "create", "start", "livecheck", "ready"}[o]
+}
+
 const (
 	ObjectStartingStepClean ObjectStartingStep = iota
 	ObjectStartingStepCreate
@@ -12,8 +16,9 @@ const (
 
 type ExhibitStartingStep struct {
 	//index of the object in the exhibit
-	Object int
-	Step   ObjectStartingStep
+	Object     int
+	TotalSteps int
+	Step       ObjectStartingStep
 }
 
 type ExhibitMetadata struct {

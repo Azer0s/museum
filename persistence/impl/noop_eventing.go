@@ -14,7 +14,7 @@ func (n NoopEventing) DispatchExhibitCreatedEvent(ctx context.Context, exhibit d
 	n.Log.Debugw("noop eventing dispatching exhibit created event", "exhibitId", exhibit.Id)
 }
 
-func (n NoopEventing) DispatchExhibitStartingEvent(ctx context.Context, exhibit domain.Exhibit, step domain.ExhibitStartingStep) {
+func (n NoopEventing) DispatchExhibitStartingEvent(ctx context.Context, exhibit domain.Exhibit, currentStepCount *int, step domain.ExhibitStartingStep) {
 	n.Log.Debugw("noop eventing dispatching exhibit starting event", "exhibitId", exhibit.Id, "step", step)
 }
 
