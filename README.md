@@ -1,8 +1,8 @@
 # mūsēum 🏛
-The fast, easy to use proxy server for your old web applications
+An easy to use proxy server, orchestrator and serverless runtime for your web applications
 
 ## What is mūsēum?
-mūsēum (/muːˈseː.um/) is a project from the University of Vienna to provide researchers with a simple way to archive and access old web applications. Often, in the course of a research project, web applications are created to provide a user interface for data collection or analysis or simply to share ones research. These applications are often developed quickly and with little regard for long-term maintenance. As a result, they are often difficult to access and maintain. mūsēum provides a simple way to archive and access these applications.
+mūsēum (/muːˈseː.um/) is a project from the University of Vienna to provide researchers with a simple way to archive and access old web applications. Often, in the course of a research project, web applications are created to provide a user interface for data collection or analysis or simply to share ones research. These applications are mostly developed quickly and with little regard for long-term maintenance. As a result, they are often difficult to access and maintain. mūsēum provides a simple way to archive and access these applications.
 
 ## How does it work?
 mūsēum is fully distributed by design. Under the hood, it uses etcd to store information on running applications (which also makes mūsēum distributed). Whenever there is a request for a specific application, mūsēum will check if the application is running within the Docker Swarm. If it is, it will forward the request to the application. If it is not, it will start the application, display a loading screen and forward the request to the application once it is ready. 
