@@ -196,7 +196,7 @@ func handleExhibitStatus(exhibitService service.ExhibitService, eventing persist
 			return
 		}
 
-		timeOut := time.After(5 * time.Second)
+		timeOut := time.After(5 * time.Minute)
 		events, cancel, err := eventing.GetExhibitStartingChannel(exhibitId, ctx)
 		if err != nil {
 			span.RecordError(err)
@@ -212,8 +212,6 @@ func handleExhibitStatus(exhibitService service.ExhibitService, eventing persist
 			}
 		}()
 
-		//TODO: test this
-
 		for {
 			select {
 			case <-timeOut:
@@ -226,6 +224,16 @@ func handleExhibitStatus(exhibitService service.ExhibitService, eventing persist
 				err := res.SendMessage("status.update", event.ToMap())
 				if err != nil {
 					log.Warnw("error sending message", "error", err, "requestId", req.RequestID)
+					return
+				}
+
+				if event.CurrentStepCount == event.TotalStepCount {
+					err := res.SendMessage("status.finished", map[string]string{"exhibitId": exhibitId})
+					if err != nil {
+						log.Warnw("error sending message", "error", err, "requestId", req.RequestID)
+						return
+					}
+
 					return
 				}
 			}

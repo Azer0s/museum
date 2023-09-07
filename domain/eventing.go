@@ -18,9 +18,8 @@ const (
 
 type ExhibitStartingStep struct {
 	//index of the object in the exhibit
-	Object     int
-	TotalSteps int
-	Step       ObjectStartingStep
+	Object int
+	Step   ObjectStartingStep
 }
 
 type ExhibitStartingStepEvent struct {

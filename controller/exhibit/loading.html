@@ -84,17 +84,28 @@
         let host = "{{ .Host }}";
         let exhibitId = "{{ .ExhibitId }}";
 
-        do {
-            await timeout(5000);
-            let res = await fetch("http://" + host + "/api/exhibits/" + exhibitId);
-            let data = await res.json();
+        let eventSource = new EventSource("http://" + host + "/api/exhibits/" + exhibitId + "/status");
+        eventSource.addEventListener("status.update", (e) => {
+            let data = JSON.parse(e.data);
+            let percentage =  (parseInt(data.currentStepCount) * 100) / parseInt(data.totalStepCount);
+            percentage = Math.round(percentage * 100) / 100;
+            document.getElementById("percentage").innerHTML = percentage + "%";
+        });
 
-            if (data["runtime_info"]["status"] === "running") {
-                window.location.reload();
-                break;
-            }
-            console.log(data);
-        } while (true);
+        eventSource.addEventListener("status.finished", async (e) => {
+            await timeout(1000);
+
+            do {
+                let res = await fetch("http://" + host + "/api/exhibits/" + exhibitId);
+                let data = await res.json();
+
+                if (data["runtime_info"]["status"] === "running") {
+                    window.location.reload();
+                    break;
+                }
+                await timeout(5000);
+            } while (true);
+        });
     </script>
 </head>
 
@@ -107,6 +118,7 @@
                 <div>
                     <h2>Loading {{ .Exhibit }}...</h2>
                     <h3>This shouldn't take long, please stand by</h3>
+                    <h3 id="percentage">0%</h3>
                 </div>
                 <div>
                     <div class="loader"></div>

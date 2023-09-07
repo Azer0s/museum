@@ -82,7 +82,7 @@ func (n NatsEventing) DispatchExhibitStartingEvent(ctx context.Context, exhibit 
 		Object:           exhibit.Objects[step.Object].Name,
 		Step:             step.Step.String(),
 		CurrentStepCount: *currentStepCount,
-		TotalStepCount:   step.TotalSteps,
+		TotalStepCount:   exhibit.GetTotalSteps(),
 	})
 
 	*currentStepCount++
@@ -100,7 +100,7 @@ func (n NatsEventing) DispatchExhibitStartingEvent(ctx context.Context, exhibit 
 		return
 	}
 
-	err = n.Conn.Publish(n.Config.GetNatsBaseKey()+".exhibit.starting", bytes)
+	err = n.Conn.Publish(n.Config.GetNatsBaseKey()+".exhibit."+exhibit.Id+".starting", bytes)
 	if err != nil {
 		n.Log.Errorw("error publishing exhibit starting event", "error", err)
 		span.RecordError(err)
@@ -140,14 +140,17 @@ func (n NatsEventing) GetExhibitStartingChannel(exhibitId string, parentCtx cont
 				continue
 			}
 
-			event := domain.ExhibitStartingStepEvent{}
+			event := cloudevents.Event{}
 			err = json.Unmarshal(msg.Data, &event)
 			if err != nil {
 				n.Log.Errorw("error unmarshalling event", "error", err)
 				continue
 			}
 
-			subChan <- event
+			eventData := domain.ExhibitStartingStepEvent{}
+			err = json.Unmarshal(event.Data(), &eventData)
+
+			subChan <- eventData
 		}
 	}()
 
