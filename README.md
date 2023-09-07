@@ -4,14 +4,21 @@ An easy to use proxy server, orchestrator and serverless runtime for your web ap
 ## What is mūsēum?
 mūsēum (/muːˈseː.um/) is a project from the University of Vienna to provide researchers with a simple way to archive and access old web applications. Often, in the course of a research project, web applications are created to provide a user interface for data collection or analysis or simply to share ones research. These applications are mostly developed quickly and with little regard for long-term maintenance. As a result, they are often difficult to access and maintain. mūsēum provides a simple way to archive and access these applications.
 
-> :warning: **This application is WIP** :warning:
-> 
-> Some things work, some don't. We plan to go stable in 2025.
+
+<details>
+<summary>
+:warning: <b>This application is WIP</b> :warning:
+</summary>
+  
+Since there is only one person working on mūsēum, progress is kinda slow (relatively speaking - the working parts might not look like much but **a lot** of work up until now has been code infrastructure). As you can see, the roadmap is still quite long so I am happy for any contribution. We plan to go stable in 2025. Maybe sooner, maybe not. You can never know with publically funded projects. 🤷
 
 - [ ] Starting and stopping applications
   - [x] On Docker Swarm
   - [ ] On DIND
   - [ ] On K8s
+- [ ] Serverless runtime
+  - [ ] JS
+  - [ ] WASM
 - [ ] Proxy
   - [x] HTTP
   - [ ] SSE
@@ -37,6 +44,7 @@ mūsēum (/muːˈseː.um/) is a project from the University of Vienna to provide
 - [ ] UI
   - [x] Loading screen
   - [ ] mūsēum UI
+</details>
 
 ## How does it work?
 mūsēum is fully distributed by design. Under the hood, it uses etcd to store information on running applications (which also makes mūsēum distributed). Whenever there is a request for a specific application, mūsēum will check if the application is running within the Docker Swarm. If it is, it will forward the request to the application. If it is not, it will start the application, display a loading screen and forward the request to the application once it is ready. 
