@@ -1,5 +1,7 @@
 package domain
 
+import "strconv"
+
 type ObjectStartingStep int
 
 func (o ObjectStartingStep) String() string {
@@ -19,6 +21,24 @@ type ExhibitStartingStep struct {
 	Object     int
 	TotalSteps int
 	Step       ObjectStartingStep
+}
+
+type ExhibitStartingStepEvent struct {
+	ExhibitId        string `json:"exhibitId"`
+	Object           string `json:"object"`
+	Step             string `json:"step"`
+	CurrentStepCount int    `json:"currentStepCount"`
+	TotalStepCount   int    `json:"totalStepCount"`
+}
+
+func (e ExhibitStartingStepEvent) ToMap() map[string]string {
+	return map[string]string{
+		"exhibitId":        e.ExhibitId,
+		"object":           e.Object,
+		"step":             e.Step,
+		"currentStepCount": strconv.Itoa(e.CurrentStepCount),
+		"totalStepCount":   strconv.Itoa(e.TotalStepCount),
+	}
 }
 
 type ExhibitMetadata struct {

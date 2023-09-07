@@ -2,6 +2,8 @@ package impl
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
@@ -71,17 +73,20 @@ func (n NatsEventing) DispatchExhibitStartingEvent(ctx context.Context, exhibit 
 		"exhibitId", exhibit.Id, "object", exhibit.Objects[step.Object].Name, "step", step.Step.String())
 	span.AddEvent("dispatching exhibit starting event")
 
-	*currentStepCount++
-
 	event := cloudevents.NewEvent()
 	event.SetID(uuid.New().String())
 	event.SetSource("museum")
 	event.SetType("exhibit.starting")
-	err := event.SetData(cloudevents.ApplicationJSON, map[string]string{
-		"exhibitId": exhibit.Id,
-		"object":    exhibit.Objects[step.Object].Name,
-		"step":      step.Step.String(),
+	err := event.SetData(cloudevents.ApplicationJSON, domain.ExhibitStartingStepEvent{
+		ExhibitId:        exhibit.Id,
+		Object:           exhibit.Objects[step.Object].Name,
+		Step:             step.Step.String(),
+		CurrentStepCount: *currentStepCount,
+		TotalStepCount:   step.TotalSteps,
 	})
+
+	*currentStepCount++
+
 	if err != nil {
 		n.Log.Errorw("error setting event data", "error", err)
 		span.RecordError(err)
@@ -103,7 +108,48 @@ func (n NatsEventing) DispatchExhibitStartingEvent(ctx context.Context, exhibit 
 	}
 }
 
-func (n NatsEventing) GetExhibitMetadataChannel() chan domain.ExhibitMetadata {
+func (n NatsEventing) GetExhibitMetadataChannel() <-chan domain.ExhibitMetadata {
 	//TODO implement me
 	panic("implement me")
+}
+
+func (n NatsEventing) GetExhibitStartingChannel(exhibitId string, parentCtx context.Context) (<-chan domain.ExhibitStartingStepEvent, context.CancelFunc, error) {
+	subChan := make(chan domain.ExhibitStartingStepEvent)
+
+	sync, err := n.Conn.SubscribeSync(n.Config.GetNatsBaseKey() + ".exhibit." + exhibitId + ".starting")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ctx, cancel := context.WithCancel(parentCtx)
+
+	go func() {
+		for {
+			msg, err := sync.NextMsgWithContext(ctx)
+			if err != nil {
+				if errors.Is(err, context.Canceled) {
+					n.Log.Debugw("context cancelled, stopping exhibit starting channel", "exhibitId", exhibitId)
+					err := sync.Unsubscribe()
+					if err != nil {
+						n.Log.Warnw("error unsubscribing from exhibit starting channel", "error", err, "exhibitId", exhibitId)
+					}
+					return
+				}
+
+				n.Log.Errorw("error getting next message", "error", err)
+				continue
+			}
+
+			event := domain.ExhibitStartingStepEvent{}
+			err = json.Unmarshal(msg.Data, &event)
+			if err != nil {
+				n.Log.Errorw("error unmarshalling event", "error", err)
+				continue
+			}
+
+			subChan <- event
+		}
+	}()
+
+	return subChan, cancel, nil
 }

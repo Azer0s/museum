@@ -14,6 +14,8 @@ mūsēum is available as a Docker image. You can find the image on Docker Hub. T
 
 * `ETCD_HOST`: The address of the etcd instance
 * `ETCD_BASE_KEY`: The base key to use for etcd (optional, defaults to `museum`)
+* `NATS_HOST`: The address of the NATS instance
+* `NATS_BASE_KEY`: The base key to use for NATS (optional, defaults to `museum`)
 * `DOCKER_HOST`: The address of the Docker Swarm (optional, defaults to `unix:///var/run/docker.sock`)
 * `PROXY_MODE`: The mode to use for the proxy (optional, defaults to `swarm-ext`)
   * `swarm`: Use the Docker Swarm to start applications (assumes that mūsēum is running in a Docker Swarm)
@@ -47,13 +49,20 @@ services:
       - "8080:8080"
     depends_on:
       - etcd
+      - nats
   etcd:
     image: bitnami/etcd:latest
     environment:
       - ALLOW_NONE_AUTHENTICATION=yes
       - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
     ports:
-      - 2379:2379
+      - "2379:2379"
+  nats:
+    image: nats:latest
+    ports:
+      - "4222:4222"
+      - "6222:6222"
+      - "8222:8222"
 ```
 
 ## Exhibits
