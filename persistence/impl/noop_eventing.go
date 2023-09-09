@@ -25,3 +25,7 @@ func (n NoopEventing) GetExhibitMetadataChannel() <-chan domain.ExhibitMetadata 
 func (n NoopEventing) GetExhibitStartingChannel(string, context.Context) (<-chan domain.ExhibitStartingStepEvent, context.CancelFunc, error) {
 	return make(chan domain.ExhibitStartingStepEvent), func() {}, nil
 }
+
+func (n NoopEventing) CanReceive() bool {
+	return false
+}

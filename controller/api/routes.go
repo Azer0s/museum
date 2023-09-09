@@ -186,6 +186,13 @@ func handleExhibitStatus(exhibitService service.ExhibitService, eventing persist
 			return
 		}
 
+		defer func() {
+			err = res.CloseSSE()
+			if err != nil {
+				log.Warnw("error closing SSE", "error", err, "requestId", req.RequestID)
+			}
+		}()
+
 		span.AddEvent("sending initial message")
 
 		// send initial SSE message
@@ -193,6 +200,16 @@ func handleExhibitStatus(exhibitService service.ExhibitService, eventing persist
 		if err != nil {
 			span.RecordError(err)
 			log.Warnw("error sending message", "error", err, "requestId", req.RequestID)
+			return
+		}
+
+		if !eventing.CanReceive() {
+			err := res.SendMessage("unsupported", map[string]string{})
+			if err != nil {
+				log.Warnw("error sending message", "error", err, "requestId", req.RequestID)
+				return
+			}
+
 			return
 		}
 
@@ -206,10 +223,6 @@ func handleExhibitStatus(exhibitService service.ExhibitService, eventing persist
 
 		defer func() {
 			cancel()
-			err = res.CloseSSE()
-			if err != nil {
-				log.Warnw("error closing SSE", "error", err, "requestId", req.RequestID)
-			}
 		}()
 
 		for {

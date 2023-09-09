@@ -156,3 +156,7 @@ func (n NatsEventing) GetExhibitStartingChannel(exhibitId string, parentCtx cont
 
 	return subChan, cancel, nil
 }
+
+func (n NatsEventing) CanReceive() bool {
+	return true
+}

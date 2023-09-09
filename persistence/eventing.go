@@ -11,4 +11,5 @@ type Eventing interface {
 
 	GetExhibitMetadataChannel() <-chan domain.ExhibitMetadata
 	GetExhibitStartingChannel(exhibitId string, ctx context.Context) (<-chan domain.ExhibitStartingStepEvent, context.CancelFunc, error)
+	CanReceive() bool
 }
