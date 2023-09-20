@@ -106,6 +106,24 @@
                 await timeout(5000);
             } while (true);
         });
+
+        eventSource.onerror = async function (e) {
+            console.log("EventSource failed, reverting to polling");
+            eventSource.close();
+
+            do {
+                let res = await fetch("http://" + host + "/api/exhibits/" + exhibitId);
+                let data = await res.json();
+
+                if (data["runtime_info"]["status"] === "running") {
+                    window.location.href = "http://" + host + "/exhibit/" + exhibitId;
+                    window.location.reload();
+                    break;
+                }
+
+                await timeout(5000);
+            } while (true);
+        };
     </script>
 </head>
 
