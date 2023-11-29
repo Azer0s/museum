@@ -1,8 +1,9 @@
 package observability
 
 import (
+	"context"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
@@ -18,7 +19,7 @@ func NewSpanExporter(config config.Config, log *zap.SugaredLogger) tracesdk.Span
 		return &tracetest.NoopExporter{}
 	}
 
-	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint("http://" + config.GetJaegerHost() + "/api/traces")))
+	exp, err := otlptracehttp.New(context.Background(), otlptracehttp.WithEndpoint("http://"+config.GetJaegerHost()+"/api/traces"))
 	if err != nil {
 		log.Panicw("failed to create jaeger exporter", "error", err)
 	}
