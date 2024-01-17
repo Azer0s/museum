@@ -1,0 +1,40 @@
+spec: v1
+name: smwc
+expose: smwc-proxy
+lease: 2h
+objects:
+  - name: smwc-db
+    image: smwc-db
+    label: latest
+    environment:
+      MYSQL_DATABASE=smwc
+      MYSQL_USER=smwc
+      MYSQL_PASSWORD="ThISisntAgr81dea"
+      MYSQL_RANDOM_ROOT_PASSWORD=yes
+    livecheck:
+      type: exec
+      config:
+        command: mysqladmin ping -h localhost
+
+  - name: smwc
+    image: smwc
+    label: latest
+    environment:
+      UID=1000
+      GID=1000
+      APACHE_RUN_USER=www-data
+      APACHE_RUN_GROUP=www-data
+      DB_HOST=smwc_db
+      DB=smwc
+      DB_USER=smwc
+      DB_PWD="ThISisntAgr81dea"
+
+  - name: smwc-proxy
+    image: smwc-proxy
+    label: latest
+    port: 80
+
+order:
+  - smwc-db
+  - smwc
+  - smwc-proxy
