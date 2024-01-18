@@ -9,7 +9,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
-	"io"
 	"museum/config"
 	"museum/domain"
 	"museum/persistence"
@@ -49,7 +48,7 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 
 	containerNameMapping := make(map[string]string)
 
-	_, err := d.Client.NetworkInspect(ctx, exhibit.Name, types.NetworkInspectOptions{})
+	network, err := d.Client.NetworkInspect(ctx, exhibit.Name, types.NetworkInspectOptions{})
 	if err != nil {
 		d.Log.Warnw("network not found, creating", "exhibit", exhibit.Name)
 
@@ -59,6 +58,12 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 			})
 			if err != nil {
 				d.Log.Errorw("error creating network", "exhibit", exhibit.Name, "error", err)
+				return err
+			}
+
+			network, err = d.Client.NetworkInspect(ctx, exhibit.Name, types.NetworkInspectOptions{})
+			if err != nil {
+				d.Log.Errorw("error inspecting network", "exhibit", exhibit.Name, "error", err)
 				return err
 			}
 		} else {
@@ -72,7 +77,7 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 	// create a container on the swarm for each object
 	idx := 0
 	for _, o := range sortedObjects {
-		err := d.startExhibitObject(ctx, exhibit, o, idx, &stepCount, &containerNameMapping)
+		err := d.startExhibitObject(ctx, exhibit, o, network, idx, &stepCount, &containerNameMapping)
 		if err != nil {
 			//TODO: rollback
 			d.Log.Errorw("error starting exhibit object", "exhibit", exhibit.Name, "object", o.Name, "error", err)
@@ -86,14 +91,14 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 	return nil
 }
 
-func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Context, exhibit *domain.Exhibit, o domain.Object, idx int, stepCount *int, templateContainer *map[string]string) error {
-	containerImage := o.Image + ":" + o.Label
+func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Context, exhibit *domain.Exhibit, object domain.Object, network types.NetworkResource, idx int, stepCount *int, templateContainer *map[string]string) error {
+	containerImage := object.Image + ":" + object.Label
 	containerConfig := &container.Config{
 		Image: containerImage,
 		Env:   make([]string, 0),
 	}
 
-	err, env := d.EnvironmentTemplateResolver.FillEnvironmentTemplate(exhibit, o, templateContainer)
+	err, env := d.EnvironmentTemplateResolver.FillEnvironmentTemplate(exhibit, object, templateContainer)
 	if err != nil {
 		return err
 	}
@@ -102,9 +107,9 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 		containerConfig.Env = append(containerConfig.Env, k+"="+v)
 	}
 
-	name := exhibit.Name + "_" + o.Name
+	name := exhibit.Name + "_" + object.Name
 
-	d.Log.Debugw("starting object", "object", o.Name, "exhibit", exhibit.Name)
+	d.Log.Debugw("starting object", "object", object.Name, "exhibit", exhibit.Name)
 
 	ctx, span := d.Provider.
 		Tracer("docker provisioner").
@@ -135,27 +140,19 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 		Step:   domain.ObjectStartingStepCreate,
 	})
 
-	pull, err := d.Client.ImagePull(ctx, containerImage, types.ImagePullOptions{})
-	if err != nil {
-		d.Log.Errorw("error pulling image", "image", containerImage, "exhibitId", exhibit.Id, "error", err)
-		return err
-	}
-
-	_, err = io.ReadAll(pull)
-	if err != nil {
-		d.Log.Errorw("error reading pull response", "image", containerImage, "exhibitId", exhibit.Id, "error", err)
-		return err
-	}
-
-	err = pull.Close()
-	if err != nil {
-		d.Log.Errorw("error closing pull response", "image", containerImage, "exhibitId", exhibit.Id, "error", err)
-		return err
-	}
+	// setup container to be in docker network
+	containerConfig.Hostname = name
+	containerConfig.Domainname = object.Name + "." + exhibit.Name
 
 	create, err := d.Client.ContainerCreate(ctx, containerConfig, nil, nil, nil, name)
 	if err != nil {
 		d.Log.Errorw("error creating container", "container", name, "exhibitId", exhibit.Id, "error", err)
+		return err
+	}
+
+	err = d.Client.NetworkConnect(ctx, network.ID, create.ID, nil)
+	if err != nil {
+		d.Log.Errorw("error connecting container to network", "container", name, "exhibitId", exhibit.Id, "error", err)
 		return err
 	}
 
@@ -172,18 +169,18 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 		return err
 	}
 
-	if o.Name == exhibit.Expose {
+	if object.Name == exhibit.Expose {
 		exhibit.RuntimeInfo.Hostname = name
 	}
 
-	if o.Livecheck != nil {
+	if object.Livecheck != nil {
 		span.AddEvent("doing livecheck")
 		d.Eventing.DispatchExhibitStartingEvent(ctx, *exhibit, stepCount, domain.ExhibitStartingStep{
 			Object: idx,
 			Step:   domain.ObjectStartingStepLivecheck,
 		})
 
-		err := d.doLivecheck(ctx, *exhibit, o)
+		err := d.doLivecheck(ctx, *exhibit, object)
 		if err != nil {
 			d.Log.Errorw("error doing livecheck", "exhibitId", exhibit.Id, "error", err)
 			return err
@@ -198,7 +195,7 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 		d.Log.Errorw("error inspecting container", "container", name, "exhibitId", exhibit.Id, "error", err)
 		return err
 	}
-	(*templateContainer)[o.Name] = inspect.NetworkSettings.Networks["bridge"].IPAddress
+	(*templateContainer)[object.Name] = inspect.NetworkSettings.Networks["bridge"].IPAddress
 
 	d.Eventing.DispatchExhibitStartingEvent(ctx, *exhibit, stepCount, domain.ExhibitStartingStep{
 		Object: idx,

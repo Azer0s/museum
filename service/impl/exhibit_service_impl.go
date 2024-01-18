@@ -3,10 +3,13 @@ package impl
 import (
 	"context"
 	"errors"
+	"github.com/docker/docker/api/types"
+	docker "github.com/docker/docker/client"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
+	"io"
 	"museum/domain"
 	"museum/persistence"
 	service "museum/service/interface"
@@ -22,6 +25,7 @@ type ExhibitServiceImpl struct {
 	Provider           trace.TracerProvider
 	LockService        service.LockService
 	Log                *zap.SugaredLogger
+	DockerClient       *docker.Client
 }
 
 func (e ExhibitServiceImpl) GetExhibitById(ctx context.Context, id string) (domain.Exhibit, error) {
@@ -163,7 +167,6 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 	}
 
 	//TODO: check container address replacement in ENV
-	//TODO: pull images
 
 	defer func(globalLock util.RwErrMutex) {
 		err := globalLock.Unlock()
@@ -258,6 +261,39 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 	createExhibitRequest.Exhibit.RuntimeInfo = &domain.ExhibitRuntimeInfo{
 		Status:            domain.NotCreated,
 		RelatedContainers: []string{},
+	}
+
+	e.Log.Debugw("pulling images", "exhibitId", createExhibitRequest.Exhibit.Id)
+	for _, object := range createExhibitRequest.Exhibit.Objects {
+		inspect, _, err := e.DockerClient.ImageInspectWithRaw(subCtx, object.Image+":"+object.Label)
+		if err != nil && !docker.IsErrNotFound(err) {
+			e.Log.Errorw("error inspecting image", "image", object.Image+":"+object.Label, "exhibitId", createExhibitRequest.Exhibit.Id, "error", err)
+			return "", err
+		}
+
+		if inspect.ID != "" {
+			e.Log.Debugw("image already pulled", "image", object.Image+":"+object.Label, "exhibitId", createExhibitRequest.Exhibit.Id)
+			continue
+		}
+
+		containerImage := object.Image + ":" + object.Label
+		pull, err := e.DockerClient.ImagePull(ctx, containerImage, types.ImagePullOptions{})
+		if err != nil {
+			e.Log.Errorw("error pulling image", "image", containerImage, "exhibitId", createExhibitRequest.Exhibit.Id, "error", err)
+			return "", err
+		}
+
+		_, err = io.ReadAll(pull)
+		if err != nil {
+			e.Log.Errorw("error reading pull response", "image", containerImage, "exhibitId", createExhibitRequest.Exhibit.Id, "error", err)
+			return "", err
+		}
+
+		err = pull.Close()
+		if err != nil {
+			e.Log.Errorw("error closing pull response", "image", containerImage, "exhibitId", createExhibitRequest.Exhibit.Id, "error", err)
+			return "", err
+		}
 	}
 
 	err = e.State.SetLastAccessed(subCtx, createExhibitRequest.Exhibit.Id, time.Now().Unix())

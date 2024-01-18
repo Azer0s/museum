@@ -2,6 +2,7 @@ package impl
 
 import (
 	"github.com/google/uuid"
+	"github.com/yosssi/gohtml"
 	"go.uber.org/zap"
 	"museum/config"
 	"museum/domain"
@@ -9,6 +10,7 @@ import (
 	"museum/util"
 	gohttp "net/http"
 	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -18,6 +20,8 @@ type RewriteServiceImpl struct {
 }
 
 var placeHolderHost = strings.ReplaceAll(uuid.New().String(), "-", "")
+var hrefSrcReg = regexp.MustCompile("(href|src) *= *([\"'])(\\w+[\\w=?/&.]*)([\"'])")
+var hrefSrcBaseReg = regexp.MustCompile("(href|src) *= *([\"'])/")
 
 // gets the FQHN (Fully Qualified Host Name) of the museum
 func (r *RewriteServiceImpl) getFqhn() string {
@@ -35,6 +39,8 @@ func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, hostn
 	// 1: "http://172.168.0.3:9090/foo/bar" changes to "http://localhost:8080/exhibit/123/foo/bar"
 	// 2: "http://localhost:8080/foo/bar" changes to "http://localhost:8080/exhibit/123/foo/bar"
 	// 3: "http://localhost:8080/exhibit/123/foo/bar" changes to "http://localhost:8080/exhibit/123/foo/bar" (not "http://localhost:8080/exhibit/123/exhibit/123/foo/bar")
+	// 4: change hrefs from "/foo/bar" to "/exhibit/123/foo/bar"
+	// 5: change srcs from "/foo/bar" to "/exhibit/123/foo/bar"
 
 	// check if res is a redirect
 	if res.StatusCode >= 300 && res.StatusCode < 400 {
@@ -51,6 +57,11 @@ func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, hostn
 		res.Header.Set("Location", redirectUrlStr)
 	}
 
+	// check content type
+	if !strings.Contains(res.Header.Get("Content-Type"), "text/html") {
+		return body, nil
+	}
+
 	// get encoding from header
 	encoding := res.Header.Get("Content-Encoding")
 	bodyDecoded, err := util.DecodeBody(*body, encoding)
@@ -60,6 +71,7 @@ func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, hostn
 	}
 
 	bodyStr := string(bodyDecoded)
+	bodyStr = gohtml.Format(bodyStr)
 
 	// let's rewrite the IP case in the res headers
 	for k := range res.Header {
@@ -89,6 +101,9 @@ func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, hostn
 		res.Header.Set(k, h)
 	}
 	bodyStr = strings.ReplaceAll(bodyStr, placeHolderHost, r.getFqhn()+"/exhibit/"+exhibit.Id)
+
+	bodyStr = hrefSrcBaseReg.ReplaceAllString(bodyStr, "$1=$2/exhibit/"+exhibit.Id+"/")
+	bodyStr = hrefSrcReg.ReplaceAllString(bodyStr, "$1=$2/exhibit/"+exhibit.Id+"/$3$4")
 
 	b, err := util.EncodeBody([]byte(bodyStr), encoding)
 	if err != nil {

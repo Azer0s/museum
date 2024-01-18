@@ -1,13 +1,12 @@
 package impl
 
 import (
-	"errors"
 	"museum/config"
 	"museum/domain"
 	"regexp"
 )
 
-var addressRegex = regexp.MustCompile(`\{\{ *@(\w+) *}}`)
+var addressRegex = regexp.MustCompile(`\{\{ *@([\w-+_.]+) *}}`)
 var hostRegex = regexp.MustCompile(`\{\{ *host *}}`)
 
 type EnvironmentTemplateResolverServiceImpl struct {
@@ -26,11 +25,13 @@ func (s *EnvironmentTemplateResolverServiceImpl) FillEnvironmentTemplate(exhibit
 			if addressRegex.MatchString(v) {
 				matches := addressRegex.FindStringSubmatch(v)
 				if len(matches) == 2 {
-					if name, ok := (*templateContainer)[matches[1]]; ok {
+					v = addressRegex.ReplaceAllString(v, exhibit.Name+"_"+matches[1])
+
+					/*if name, ok := (*templateContainer)[matches[1]]; ok {
 						v = addressRegex.ReplaceAllString(v, name)
 					} else {
 						return errors.New("could not find object " + matches[1]), nil
-					}
+					}*/
 				}
 			}
 

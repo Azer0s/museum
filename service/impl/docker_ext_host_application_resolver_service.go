@@ -45,6 +45,10 @@ func (d DockerExtHostApplicationResolverService) ResolveApplication(ctx context.
 		return "", err
 	}
 
+	if ipStr == "" {
+		return "", errors.New("exhibit expose container does not have an IP address")
+	}
+
 	d.IpCache.Put(exhibit.RuntimeInfo.Hostname, ipStr)
 	return ipStr, nil
 }
@@ -59,6 +63,10 @@ func (d DockerExtHostApplicationResolverService) ResolveExhibitObject(exhibit do
 	inspect, err := d.Client.ContainerInspect(context.Background(), objectContainerName)
 	if err != nil {
 		return "", err
+	}
+
+	if inspect.ContainerJSONBase.State.Running == false {
+		return "", errors.New("exhibit object is not running")
 	}
 
 	return inspect.NetworkSettings.DefaultNetworkSettings.IPAddress, nil
