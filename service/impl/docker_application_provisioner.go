@@ -578,6 +578,22 @@ func (d DockerApplicationProvisionerService) CleanupApplication(ctx context.Cont
 		}
 	}
 
+	networks, err := d.Client.NetworkList(subCtx, types.NetworkListOptions{})
+	if err != nil {
+		d.Log.Errorw("error listing networks", "error", err)
+		networks = make([]types.NetworkResource, 0)
+	}
+
+	for _, network := range networks {
+		if network.Name == exhibit.Name {
+			err = d.Client.NetworkRemove(subCtx, network.ID)
+			if err != nil {
+				d.Log.Errorw("error removing network", "error", err)
+			}
+			break
+		}
+	}
+
 	span.AddEvent("reseting runtime_info")
 	exhibit.RuntimeInfo.RelatedContainers = make([]string, 0)
 	exhibit.RuntimeInfo.Hostname = ""

@@ -53,6 +53,8 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 		return err
 	}
 
+	//TODO: try to proxy via the referer header
+
 	// rewrite request
 	if exhibit.Rewrite != nil && *exhibit.Rewrite {
 		err = d.RewriteService.RewriteClientRequest(exhibit, ip+":"+port, req, &reqBody)
@@ -140,8 +142,6 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 		res.WriteHeader(gohttp.StatusInternalServerError)
 		return err
 	}
-
-	//TODO: try to proxy via the referer header
 
 	// rewrite response
 	if exhibit.Rewrite != nil && *exhibit.Rewrite {
