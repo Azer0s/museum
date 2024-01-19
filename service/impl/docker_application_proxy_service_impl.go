@@ -10,7 +10,9 @@ import (
 	"museum/http"
 	service "museum/service/interface"
 	gohttp "net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -52,8 +54,6 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 		res.WriteHeader(gohttp.StatusInternalServerError)
 		return err
 	}
-
-	//TODO: try to proxy via the referer header
 
 	// rewrite request
 	if exhibit.Rewrite != nil && *exhibit.Rewrite {
@@ -116,8 +116,6 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 		return errors.New("timeout doing proxy request")
 	}
 
-	// TODO: rewrite redirect
-
 	if proxyRes.Request.URL.Path != "/"+path && proxyReq.Method == "GET" {
 		// the application redirected us to a different path
 		// we need to redirect the user to the new path
@@ -156,6 +154,30 @@ func (d *DockerApplicationProxyService) ForwardRequest(exhibit domain.Exhibit, p
 
 	for k, v := range proxyRes.Header {
 		res.Header().Set(k, v[0])
+	}
+
+	if proxyRes.StatusCode > 299 && proxyRes.StatusCode < 400 {
+		// the application redirected us to a different path
+		// we need to redirect the user to the new path
+		redirectUrl, err := url.Parse(proxyRes.Header.Get("Location"))
+		if err != nil {
+			d.Log.Warnw("error parsing redirect url", "error", err, "requestId", req.RequestID, "exhibitId", exhibit.Id)
+			res.WriteHeader(gohttp.StatusInternalServerError)
+			return err
+		}
+
+		// restructure from http://localhost:8080/foo/bar
+		// to http://localhost:8080/exhibit/123/foo/bar
+		// if, somehow, the redirect url already contains the exhibit id, we don't want to add it again
+
+		if strings.Contains(redirectUrl.String(), "/exhibit/"+exhibit.Id) {
+			res.WriteHeader(gohttp.StatusTemporaryRedirect)
+			return nil
+		}
+
+		res.Header().Set("Location", "/exhibit/"+exhibit.Id+redirectUrl.Path)
+		res.WriteHeader(gohttp.StatusTemporaryRedirect)
+		return nil
 	}
 
 	res.WriteHeader(proxyRes.StatusCode)

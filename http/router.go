@@ -9,10 +9,13 @@ import (
 	"strings"
 )
 
+type FallbackHandler func(writer http.ResponseWriter, request *Request) error
+
 type Mux struct {
-	routes []Route
-	mux    *http.ServeMux
-	log    *zap.SugaredLogger
+	routes     []Route
+	mux        *http.ServeMux
+	log        *zap.SugaredLogger
+	fallbackFn *FallbackHandler
 }
 
 type Status struct {
@@ -68,6 +71,19 @@ func (r *Mux) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 		}
 	}
 
+	if r.fallbackFn != nil {
+		err := (*r.fallbackFn)(writer, &Request{
+			Request:   request,
+			RequestID: requestId,
+		})
+
+		if err == nil {
+			return
+		}
+
+		r.log.Warnw("error in not found handler", "error", err, "requestId", requestId)
+	}
+
 	writer.WriteHeader(http.StatusNotFound)
 	err := WriteStatus(writer, Status{Status: "Not Found"})
 	if err == nil {
@@ -84,4 +100,8 @@ func NewMux(log *zap.SugaredLogger) *Mux {
 
 func (r *Mux) AddRoute(route Route) {
 	r.routes = append(r.routes, route)
+}
+
+func (r *Mux) SetFallbackHandler(fallbackHandler FallbackHandler) {
+	r.fallbackFn = &fallbackHandler
 }

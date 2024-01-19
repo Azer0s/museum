@@ -263,8 +263,10 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 		RelatedContainers: []string{},
 	}
 
-	e.Log.Debugw("pulling images", "exhibitId", createExhibitRequest.Exhibit.Id)
+	e.Log.Infow("pulling images", "exhibitId", createExhibitRequest.Exhibit.Id)
 	for _, object := range createExhibitRequest.Exhibit.Objects {
+		e.Log.Debugw("pulling image", "image", object.Image+":"+object.Label, "exhibitId", createExhibitRequest.Exhibit.Id)
+
 		inspect, _, err := e.DockerClient.ImageInspectWithRaw(subCtx, object.Image+":"+object.Label)
 		if err != nil && !docker.IsErrNotFound(err) {
 			e.Log.Errorw("error inspecting image", "image", object.Image+":"+object.Label, "exhibitId", createExhibitRequest.Exhibit.Id, "error", err)

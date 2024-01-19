@@ -3,6 +3,7 @@ package exhibit
 import (
 	"context"
 	_ "embed"
+	"errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
@@ -11,6 +12,7 @@ import (
 	"museum/http"
 	service "museum/service/interface"
 	gohttp "net/http"
+	"regexp"
 	"text/template"
 	"time"
 )
@@ -118,4 +120,25 @@ func proxyHandler(exhibitService service.ExhibitService, lastAccessedService ser
 
 func RegisterRoutes(r *http.Mux, exhibitService service.ExhibitService, lastAccessedService service.LastAccessedService, proxy service.ApplicationProxyService, provisioner service.ApplicationProvisionerService, log *zap.SugaredLogger, config config.Config, provider trace.TracerProvider) {
 	r.AddRoute(http.Any("/exhibit/{id}/>>", proxyHandler(exhibitService, lastAccessedService, proxy, provisioner, log, config, provider)))
+
+	defaultRouteReg := regexp.MustCompile("/exhibit/([a-f0-9-]+)")
+	r.SetFallbackHandler(func(writer gohttp.ResponseWriter, req *http.Request) error {
+		// if no route was found, check if the request has a referer
+		// if it does and the referers base path is /exhibit/{id},
+		// redirect to that path
+		if req.Header.Get("Referer") != "" {
+			requestPath := req.URL.Path
+			exhibitId := defaultRouteReg.FindStringSubmatch(req.Header.Get("Referer"))[1]
+
+			if req.URL.RawQuery != "" {
+				requestPath += "?" + req.URL.RawQuery
+			}
+
+			writer.Header().Set("Location", "/exhibit/"+exhibitId+requestPath)
+			writer.WriteHeader(gohttp.StatusFound)
+			return nil
+		}
+
+		return errors.New("no fallback route found")
+	})
 }
