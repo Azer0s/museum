@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	cloudevents "github.com/cloudevents/sdk-go/v2/event"
 	"go.opentelemetry.io/otel/attribute"
@@ -213,26 +214,24 @@ func handleExhibitStatus(exhibitService service.ExhibitService, eventing persist
 			return
 		}
 
+		sseContext, sseContextCancel := context.WithCancel(context.Background())
+		defer sseContextCancel()
+
 		timeOut := time.After(5 * time.Minute)
-		events, cancel, err := eventing.GetExhibitStartingChannel(exhibitId, ctx)
+		events, cancel, err := eventing.GetExhibitStartingChannel(exhibitId, sseContext)
 		if err != nil {
 			span.RecordError(err)
 			log.Warnw("error getting exhibit starting channel", "error", err, "requestId", req.RequestID)
 			return
 		}
-
-		defer func() {
-			cancel()
-		}()
+		defer cancel()
 
 		for {
 			select {
 			case <-timeOut:
 				log.Warnw("timeout reached, stopping SSE", "requestId", req.RequestID)
 				return
-			case <-ctx.Done():
-				log.Debugw("context cancelled, stopping SSE", "requestId", req.RequestID)
-				return
+
 			case event := <-events:
 				err := res.SendMessage("status.update", event.ToMap())
 				if err != nil {
