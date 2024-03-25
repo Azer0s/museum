@@ -23,7 +23,7 @@ func NewDockerApplicationProvisionerService(client *docker.Client, exhibitServic
 		LastAccessedService:         lastAccessedService,
 		Eventing:                    eventing,
 		Log:                         log,
-		Provider:                    providerFactory.Build("docker"),
+		Provider:                    providerFactory.Build("docker-service"),
 		Config:                      config,
 	}
 }

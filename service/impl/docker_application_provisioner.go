@@ -163,7 +163,7 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 	})
 
 	d.Log.Debugw("starting container", "container", name, "exhibitId", exhibit.Id)
-	err = d.Client.ContainerStart(ctx, create.ID, types.ContainerStartOptions{})
+	err = d.Client.ContainerStart(ctx, create.ID, container.StartOptions{})
 	if err != nil {
 		d.Log.Errorw("error starting container", "container", name, "exhibitId", exhibit.Id, "error", err)
 		return err
@@ -229,7 +229,7 @@ func (d DockerApplicationProvisionerService) doCleanup(inspect types.ContainerJS
 	d.Log.Debugw("removing container", "container", inspect.Name, "exhibitId", exhibit.Id)
 
 	// remove container
-	err := d.Client.ContainerRemove(subCtx, inspect.ID, types.ContainerRemoveOptions{})
+	err := d.Client.ContainerRemove(subCtx, inspect.ID, container.RemoveOptions{})
 	if err != nil {
 		return err
 	}

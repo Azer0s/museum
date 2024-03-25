@@ -3,14 +3,17 @@ package observability
 import (
 	"context"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"museum/config"
+	"time"
 )
 
 func NewSpanExporter(config config.Config, log *zap.SugaredLogger) tracesdk.SpanExporter {
@@ -19,7 +22,18 @@ func NewSpanExporter(config config.Config, log *zap.SugaredLogger) tracesdk.Span
 		return &tracetest.NoopExporter{}
 	}
 
-	exp, err := otlptracehttp.New(context.Background(), otlptracehttp.WithEndpoint("http://"+config.GetJaegerHost()+"/api/traces"))
+	// try to set up a grpc connection to the collector
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	conn, err := grpc.DialContext(ctx, config.GetJaegerHost(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
+	)
+	if err != nil {
+		log.Panicw("failed to create gRPC connection to collector", "error", err)
+	}
+
+	exp, err := otlptracegrpc.New(context.Background(), otlptracegrpc.WithGRPCConn(conn))
 	if err != nil {
 		log.Panicw("failed to create jaeger exporter", "error", err)
 	}

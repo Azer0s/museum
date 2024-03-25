@@ -2,6 +2,11 @@ spec: v1
 name: my-site
 expose: nginx
 lease: 20s
+
+meta:
+    phaidra-creator: "jonathan.fries@univie.ac.at"
+    phaidra-title: "Python Dashboard"
+
 objects:
   - name: nginx
     image: nginx

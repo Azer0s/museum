@@ -14,7 +14,7 @@ func NewEtcdState(config config.Config, etcdClient *etcd.Client, providerFactory
 	etcdState := &impl.EtcdState{
 		Client:   etcdClient,
 		Config:   config,
-		Provider: providerFactory.Build("etcd"),
+		Provider: providerFactory.Build("etcd-service"),
 		Log:      log,
 	}
 
@@ -41,7 +41,7 @@ func NewNatsEventing(config config.Config, log *zap.SugaredLogger, conn *nats.Co
 	return &impl.NatsEventing{
 		Config:   config,
 		Log:      log,
-		Provider: providerFactory.Build("nats"),
+		Provider: providerFactory.Build("nats-service"),
 		Conn:     conn,
 	}
 }
