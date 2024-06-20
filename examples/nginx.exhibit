@@ -4,8 +4,19 @@ expose: nginx
 lease: 20s
 
 meta:
-    phaidra-creator: "jonathan.fries@univie.ac.at"
-    phaidra-title: "Python Dashboard"
+    phaidra-title: "Nginx example"
+    pahidra-description: "A simple example of a Nginx container"
+    phaidra-creator: "ariel.simulevski@univie.ac.at"
+    phaidra-author-firstname: "Ariel"
+    phaidra-author-lastname: "Simulevski"
+    phaidra-oefos: "504017"
+    phaidra-orgunit: "A495"
+    phaidra-keywords:
+      -
+        - lang: "eng"
+          value: "nginx application"
+        - lang: "deu"
+          value: "nginx anwendung"
 
 objects:
   - name: nginx
