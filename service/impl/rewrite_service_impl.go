@@ -73,35 +73,6 @@ func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, hostn
 	bodyStr := string(bodyDecoded)
 	bodyStr = gohtml.Format(bodyStr)
 
-	/* let's rewrite the IP case in the res headers
-	for k := range res.Header {
-		h := strings.ReplaceAll(res.Header.Get(k), hostname, r.getFqhn()+"/exhibit/"+exhibit.Id)
-		res.Header.Set(k, h)
-	}
-	bodyStr = strings.ReplaceAll(bodyStr, hostname, r.getFqhn()+"/exhibit/"+exhibit.Id)
-
-	// now let's rewrite every case 3 to an uuid,
-	// so we don't accidentally rewrite during case 2
-	for k := range res.Header {
-		h := strings.ReplaceAll(res.Header.Get(k), r.getFqhn()+"/exhibit/"+exhibit.Id, placeHolderHost)
-		res.Header.Set(k, h)
-	}
-	bodyStr = strings.ReplaceAll(bodyStr, r.getFqhn()+"/exhibit/"+exhibit.Id, placeHolderHost)
-
-	// now let's rewrite every case 2
-	for k := range res.Header {
-		h := strings.ReplaceAll(res.Header.Get(k), r.getFqhn(), r.getFqhn()+"/exhibit/"+exhibit.Id)
-		res.Header.Set(k, h)
-	}
-	bodyStr = strings.ReplaceAll(bodyStr, r.getFqhn(), r.getFqhn()+"/exhibit/"+exhibit.Id)
-
-	// now let's rewrite every uuid to the original path
-	for k := range res.Header {
-		h := strings.ReplaceAll(res.Header.Get(k), placeHolderHost, r.getFqhn()+"/exhibit/"+exhibit.Id)
-		res.Header.Set(k, h)
-	}
-	bodyStr = strings.ReplaceAll(bodyStr, placeHolderHost, r.getFqhn()+"/exhibit/"+exhibit.Id)*/
-
 	bodyStr = hrefSrcBaseReg.ReplaceAllString(bodyStr, "$1=$2/exhibit/"+exhibit.Id+"/")
 	bodyStr = hrefSrcReg.ReplaceAllString(bodyStr, "$1=$2/exhibit/"+exhibit.Id+"/$3$4")
 

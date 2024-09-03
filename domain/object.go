@@ -12,7 +12,6 @@ type Object struct {
 	Livecheck   *Livecheck `json:"livecheck" yaml:"livecheck"`
 	Environment StringMap  `json:"environment" yaml:"environment"`
 	Mounts      StringMap  `json:"mounts" yaml:"mounts"`
-	Volumes     []Volume   `json:"volumes" yaml:"volumes"`
 	Port        *string    `json:"port" yaml:"port"`
 }
 

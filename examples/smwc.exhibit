@@ -3,6 +3,7 @@ name: smwc
 expose: smwc-proxy
 lease: 2h
 rewrite: true
+
 objects:
   - name: smwc-db
     image: smwc-db

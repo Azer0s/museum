@@ -3,7 +3,7 @@ package impl
 import (
 	"context"
 	"errors"
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/image"
 	docker "github.com/docker/docker/client"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
@@ -279,7 +279,7 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 		}
 
 		containerImage := object.Image + ":" + object.Label
-		pull, err := e.DockerClient.ImagePull(ctx, containerImage, types.ImagePullOptions{})
+		pull, err := e.DockerClient.ImagePull(ctx, containerImage, image.PullOptions{})
 		if err != nil {
 			e.Log.Errorw("error pulling image", "image", containerImage, "exhibitId", createExhibitRequest.Exhibit.Id, "error", err)
 			return "", err

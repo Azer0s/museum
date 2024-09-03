@@ -9,6 +9,7 @@ type Exhibit struct {
 	Lease       string                 `json:"lease" yaml:"lease"`
 	Order       []string               `json:"order" yaml:"order"`
 	Meta        map[string]interface{} `json:"meta" yaml:"meta"`
+	Volumes     []Volume               `json:"volumes" yaml:"volumes"`
 	RuntimeInfo *ExhibitRuntimeInfo    `json:"-"`
 }
 

@@ -17,13 +17,7 @@ objects:
       config:
         command: mysqladmin ping -h db -u wordpress -pwordpress
     mounts:
-      mysql: /var/lib/mysql
-    volumes:
-      - name: db_data
-        driver:
-          type: local
-          config:
-            path: /data/mysql
+      db_data: /var/lib/mysql
 
   - name: wordpress
     image: wordpress
@@ -47,3 +41,10 @@ objects:
 order:
   - db
   - wordpress
+  
+volumes:
+  - name: db_data
+    driver:
+      type: local
+      config:
+        path: /data/mysql
