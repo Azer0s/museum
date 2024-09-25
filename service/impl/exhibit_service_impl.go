@@ -189,22 +189,50 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 	}
 
 	// check that exposed container has an exposed port
-	found := false
-	for i, c := range createExhibitRequest.Exhibit.Objects {
-		if c.Name == createExhibitRequest.Exhibit.Expose {
-			if c.Port == nil || *c.Port == "" {
-				createExhibitRequest.Exhibit.Objects[i].Port = new(string)
-				*createExhibitRequest.Exhibit.Objects[i].Port = "80"
+	{
+		found := false
+		for i, c := range createExhibitRequest.Exhibit.Objects {
+			if c.Name == createExhibitRequest.Exhibit.Expose {
+				if c.Port == nil || *c.Port == "" {
+					createExhibitRequest.Exhibit.Objects[i].Port = new(string)
+					*createExhibitRequest.Exhibit.Objects[i].Port = "80"
+				}
+				found = true
 			}
-			found = true
+		}
+
+		if !found {
+			return "", errors.New("exhibit must expose a container that is part of the exhibit")
 		}
 	}
 
-	if !found {
-		return "", errors.New("exhibit must expose a container that is part of the exhibit")
+	//---------------------------------------------------
+
+	// validate mount paths
+	mounts := make([]string, 0)
+	for _, c := range createExhibitRequest.Exhibit.Objects {
+		if len(c.Mounts) != 0 {
+			for mount, _ := range c.Mounts {
+				mounts = append(mounts, mount)
+			}
+		}
 	}
 
-	// TODO: validate mount paths
+	// check that volumes have required mounts
+	for _, m := range mounts {
+		found := false
+		for _, v := range createExhibitRequest.Exhibit.Volumes {
+			if v.Name == m {
+				found = true
+			}
+		}
+
+		if !found {
+			return "", errors.New("mount " + m + " does not have a corresponding volume")
+		}
+	}
+
+	//---------------------------------------------------
 
 	// validate lease time
 	_, err = time.ParseDuration(createExhibitRequest.Exhibit.Lease)
@@ -254,6 +282,8 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 		}
 	}
 
+	//---------------------------------------------------
+
 	// give exhibit a unique id
 	createExhibitRequest.Exhibit.Id = uuid.New().String()
 
@@ -262,6 +292,8 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 		Status:            domain.NotCreated,
 		RelatedContainers: []string{},
 	}
+
+	//---------------------------------------------------
 
 	e.Log.Infow("pulling images", "exhibitId", createExhibitRequest.Exhibit.Id)
 	for _, object := range createExhibitRequest.Exhibit.Objects {

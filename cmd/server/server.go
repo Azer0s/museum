@@ -65,6 +65,7 @@ func Run() {
 	ioc.RegisterSingleton[persistence.State](c, persistence.NewEtcdState)
 
 	// register services
+	ioc.RegisterSingleton[service.VolumeProvisionerFactoryService](c, service.NewVolumeProvisionerFactoryService)
 	ioc.RegisterSingleton[service.RewriteService](c, service.NewRewriteService)
 	ioc.RegisterSingleton[service.EnvironmentTemplateResolverService](c, service.NewEnvironmentTemplateResolverService)
 	ioc.RegisterSingleton[service.LockService](c, service.NewLockService)
