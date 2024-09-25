@@ -213,7 +213,7 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 	mounts := make([]string, 0)
 	for _, c := range createExhibitRequest.Exhibit.Objects {
 		if len(c.Mounts) != 0 {
-			for mount, _ := range c.Mounts {
+			for mount := range c.Mounts {
 				mounts = append(mounts, mount)
 			}
 		}

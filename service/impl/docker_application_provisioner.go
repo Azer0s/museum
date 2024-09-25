@@ -616,7 +616,7 @@ func (d DockerApplicationProvisionerService) CleanupApplication(ctx context.Cont
 		}
 	}
 
-	span.AddEvent("reseting runtime_info")
+	span.AddEvent("resetting runtime_info")
 	exhibit.RuntimeInfo.RelatedContainers = make([]string, 0)
 	exhibit.RuntimeInfo.Hostname = ""
 

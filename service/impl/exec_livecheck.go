@@ -2,7 +2,7 @@ package impl
 
 import (
 	"context"
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	docker "github.com/docker/docker/client"
 	"io"
 	"museum/domain"
@@ -20,14 +20,17 @@ func (e *ExecLivecheck) Check(ctx context.Context, exhibit domain.Exhibit, objec
 		command = "true"
 	}
 
-	exec, err := e.Client.ContainerExecCreate(ctx, objectContainerName, types.ExecConfig{
+	exec, err := e.Client.ContainerExecCreate(ctx, objectContainerName, container.ExecOptions{
 		Cmd: []string{"sh", "-c", command},
 	})
 	if err != nil {
 		return false, err
 	}
 
-	res, err := e.Client.ContainerExecAttach(ctx, exec.ID, types.ExecStartCheck{})
+	res, err := e.Client.ContainerExecAttach(ctx, exec.ID, container.ExecStartOptions{})
+	if err != nil {
+		return false, err
+	}
 
 	_, err = io.ReadAll(res.Reader)
 	if err != nil {
