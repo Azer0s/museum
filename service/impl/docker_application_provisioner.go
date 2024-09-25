@@ -144,6 +144,28 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 	containerConfig.Hostname = name
 	containerConfig.Domainname = object.Name + "." + exhibit.Name
 
+	// setup container mounts
+	if len(object.Mounts) != 0 {
+		containerConfig.Volumes = make(map[string]struct{})
+		for containerVolume, containerMount := range object.Mounts {
+			// find corresponding volume
+			volume := domain.Volume{}
+			for _, v := range exhibit.Volumes {
+				if v.Name == containerVolume {
+					volume = v
+					break
+				}
+			}
+
+			util.Nop(volume)
+			util.Nop(containerMount)
+
+			// TODO:
+			// provisioner := VolumeProvisionerFactoryService.GetForDriverType(volume.Driver)
+			// containerConfig.Volumes[containerMount] = provisioner.ProvisionVolume(ctx, volume)
+		}
+	}
+
 	create, err := d.Client.ContainerCreate(ctx, containerConfig, nil, nil, nil, name)
 	if err != nil {
 		d.Log.Errorw("error creating container", "container", name, "exhibitId", exhibit.Id, "error", err)

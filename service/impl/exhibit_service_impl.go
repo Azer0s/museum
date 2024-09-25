@@ -19,13 +19,14 @@ import (
 )
 
 type ExhibitServiceImpl struct {
-	State              persistence.State
-	Eventing           persistence.Eventing
-	RuntimeInfoService service.RuntimeInfoService
-	Provider           trace.TracerProvider
-	LockService        service.LockService
-	Log                *zap.SugaredLogger
-	DockerClient       *docker.Client
+	State                    persistence.State
+	Eventing                 persistence.Eventing
+	RuntimeInfoService       service.RuntimeInfoService
+	Provider                 trace.TracerProvider
+	LockService              service.LockService
+	Log                      *zap.SugaredLogger
+	DockerClient             *docker.Client
+	VolumeProvisionerFactory service.VolumeProvisionerFactoryService
 }
 
 func (e ExhibitServiceImpl) GetExhibitById(ctx context.Context, id string) (domain.Exhibit, error) {
@@ -229,6 +230,18 @@ func (e ExhibitServiceImpl) CreateExhibit(ctx context.Context, createExhibitRequ
 
 		if !found {
 			return "", errors.New("mount " + m + " does not have a corresponding volume")
+		}
+	}
+
+	for _, v := range createExhibitRequest.Exhibit.Volumes {
+		vp, err := e.VolumeProvisionerFactory.GetForDriverType(v.Driver.Type)
+		if err != nil {
+			return "", err
+		}
+
+		err = vp.CheckValidity(v.Driver.Config)
+		if err != nil {
+			return "", err
 		}
 	}
 
