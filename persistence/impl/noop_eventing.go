@@ -10,11 +10,11 @@ type NoopEventing struct {
 	Log *zap.SugaredLogger
 }
 
-func (n NoopEventing) DispatchExhibitCreatedEvent(ctx context.Context, exhibit domain.Exhibit) {
+func (n NoopEventing) DispatchExhibitCreatedEvent(_ context.Context, exhibit domain.Exhibit) {
 	n.Log.Debugw("noop eventing dispatching exhibit created event", "exhibitId", exhibit.Id)
 }
 
-func (n NoopEventing) DispatchExhibitStartingEvent(ctx context.Context, exhibit domain.Exhibit, currentStepCount *int, step domain.ExhibitStartingStep) {
+func (n NoopEventing) DispatchExhibitStartingEvent(_ context.Context, exhibit domain.Exhibit, _ *int, step domain.ExhibitStartingStep) {
 	n.Log.Debugw("noop eventing dispatching exhibit starting event", "exhibitId", exhibit.Id, "step", step)
 }
 

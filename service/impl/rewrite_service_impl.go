@@ -42,6 +42,8 @@ func (r *RewriteServiceImpl) RewriteServerResponse(exhibit domain.Exhibit, hostn
 	// 4: change hrefs from "/foo/bar" to "/exhibit/123/foo/bar"
 	// 5: change srcs from "/foo/bar" to "/exhibit/123/foo/bar"
 
+	util.Nop(hostname)
+
 	// check if res is a redirect
 	if res.StatusCode >= 300 && res.StatusCode < 400 {
 		// get the redirect url

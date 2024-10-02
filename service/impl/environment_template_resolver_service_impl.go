@@ -13,7 +13,7 @@ type EnvironmentTemplateResolverServiceImpl struct {
 	Config config.Config
 }
 
-func (s *EnvironmentTemplateResolverServiceImpl) FillEnvironmentTemplate(exhibit *domain.Exhibit, o domain.Object, templateContainer *map[string]string) (error, map[string]string) {
+func (s *EnvironmentTemplateResolverServiceImpl) FillEnvironmentTemplate(exhibit *domain.Exhibit, o domain.Object, _ *map[string]string) (error, map[string]string) {
 	res := make(map[string]string)
 	if o.Environment != nil {
 		for k, v := range o.Environment {

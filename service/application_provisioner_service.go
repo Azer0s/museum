@@ -12,7 +12,18 @@ import (
 
 type ApplicationProvisionerService service.ApplicationProvisionerService
 
-func NewDockerApplicationProvisionerService(client *docker.Client, exhibitService service.ExhibitService, environmentTemplateResolver service.EnvironmentTemplateResolverService, runtimeInfoService service.RuntimeInfoService, lastAccessedService service.LastAccessedService, lockService service.LockService, livecheckFactoryService LivecheckFactoryService, eventing persistence.Eventing, log *zap.SugaredLogger, providerFactory *observability.TracerProviderFactory, config config.Config) ApplicationProvisionerService {
+func NewDockerApplicationProvisionerService(client *docker.Client,
+	exhibitService service.ExhibitService,
+	environmentTemplateResolver service.EnvironmentTemplateResolverService,
+	runtimeInfoService service.RuntimeInfoService,
+	lastAccessedService service.LastAccessedService,
+	lockService service.LockService,
+	livecheckFactoryService LivecheckFactoryService,
+	eventing persistence.Eventing,
+	log *zap.SugaredLogger,
+	providerFactory *observability.TracerProviderFactory,
+	config config.Config,
+	volumeProvisionerFactory service.VolumeProvisionerFactoryService) ApplicationProvisionerService {
 	return &impl.DockerApplicationProvisionerService{
 		ExhibitService:              exhibitService,
 		LivecheckFactoryService:     livecheckFactoryService,
@@ -25,5 +36,6 @@ func NewDockerApplicationProvisionerService(client *docker.Client, exhibitServic
 		Log:                         log,
 		Provider:                    providerFactory.Build("docker-service"),
 		Config:                      config,
+		VolumeProvisionerFactory:    volumeProvisionerFactory,
 	}
 }

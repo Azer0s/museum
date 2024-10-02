@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -31,6 +32,7 @@ type DockerApplicationProvisionerService struct {
 	Log                         *zap.SugaredLogger
 	Provider                    trace.TracerProvider
 	Config                      config.Config
+	VolumeProvisionerFactory    service.VolumeProvisionerFactoryService
 }
 
 func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx context.Context, exhibit *domain.Exhibit) error {
@@ -48,12 +50,12 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 
 	containerNameMapping := make(map[string]string)
 
-	network, err := d.Client.NetworkInspect(ctx, exhibit.Name, types.NetworkInspectOptions{})
+	networkInspect, err := d.Client.NetworkInspect(ctx, exhibit.Name, network.InspectOptions{})
 	if err != nil {
 		d.Log.Warnw("network not found, creating", "exhibit", exhibit.Name)
 
 		if docker.IsErrNotFound(err) {
-			_, err := d.Client.NetworkCreate(ctx, exhibit.Name, types.NetworkCreate{
+			_, err := d.Client.NetworkCreate(ctx, exhibit.Name, network.CreateOptions{
 				Driver: "bridge",
 			})
 			if err != nil {
@@ -61,7 +63,7 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 				return err
 			}
 
-			network, err = d.Client.NetworkInspect(ctx, exhibit.Name, types.NetworkInspectOptions{})
+			networkInspect, err = d.Client.NetworkInspect(ctx, exhibit.Name, network.InspectOptions{})
 			if err != nil {
 				d.Log.Errorw("error inspecting network", "exhibit", exhibit.Name, "error", err)
 				return err
@@ -77,7 +79,7 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 	// create a container on the swarm for each object
 	idx := 0
 	for _, o := range sortedObjects {
-		err := d.startExhibitObject(ctx, exhibit, o, network, idx, &stepCount, &containerNameMapping)
+		err := d.startExhibitObject(ctx, exhibit, o, networkInspect, idx, &stepCount, &containerNameMapping)
 		if err != nil {
 			//TODO: rollback
 			d.Log.Errorw("error starting exhibit object", "exhibit", exhibit.Name, "object", o.Name, "error", err)
@@ -91,7 +93,7 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 	return nil
 }
 
-func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Context, exhibit *domain.Exhibit, object domain.Object, network types.NetworkResource, idx int, stepCount *int, templateContainer *map[string]string) error {
+func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Context, exhibit *domain.Exhibit, object domain.Object, network network.Inspect, idx int, stepCount *int, templateContainer *map[string]string) error {
 	containerImage := object.Image + ":" + object.Label
 	containerConfig := &container.Config{
 		Image: containerImage,
@@ -146,7 +148,6 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 
 	// setup container mounts
 	if len(object.Mounts) != 0 {
-		containerConfig.Volumes = make(map[string]struct{})
 		for containerVolume, containerMount := range object.Mounts {
 			// find corresponding volume
 			volume := domain.Volume{}
@@ -160,9 +161,18 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 			util.Nop(volume)
 			util.Nop(containerMount)
 
-			// TODO:
-			// provisioner := VolumeProvisionerFactoryService.GetForDriverType(volume.Driver)
-			// containerConfig.Volumes[containerMount] = provisioner.ProvisionVolume(ctx, volume)
+			provisioner, err := d.VolumeProvisionerFactory.GetForDriverType(volume.Driver.Type)
+			if err != nil {
+				return err
+			}
+
+			//TODO
+
+			util.Nop(provisioner)
+
+			//containerConfig.Volumes
+
+			//containerConfig.Volumes[containerMount], _ = provisioner.ProvisionStorage(ctx, volume.Driver.Config)
 		}
 	}
 
@@ -255,6 +265,19 @@ func (d DockerApplicationProvisionerService) doCleanup(inspect types.ContainerJS
 	if err != nil {
 		return err
 	}
+
+	for _, volume := range exhibit.Volumes {
+		provisioner, err := d.VolumeProvisionerFactory.GetForDriverType(volume.Driver.Type)
+		if err != nil {
+			return err
+		}
+
+		err = provisioner.DeprovisionStorage(subCtx, volume.Driver.Config)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -600,15 +623,15 @@ func (d DockerApplicationProvisionerService) CleanupApplication(ctx context.Cont
 		}
 	}
 
-	networks, err := d.Client.NetworkList(subCtx, types.NetworkListOptions{})
+	networks, err := d.Client.NetworkList(subCtx, network.ListOptions{})
 	if err != nil {
 		d.Log.Errorw("error listing networks", "error", err)
-		networks = make([]types.NetworkResource, 0)
+		networks = make([]network.Inspect, 0)
 	}
 
-	for _, network := range networks {
-		if network.Name == exhibit.Name {
-			err = d.Client.NetworkRemove(subCtx, network.ID)
+	for _, summary := range networks {
+		if summary.Name == exhibit.Name {
+			err = d.Client.NetworkRemove(subCtx, summary.ID)
 			if err != nil {
 				d.Log.Errorw("error removing network", "error", err)
 			}

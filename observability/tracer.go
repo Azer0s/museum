@@ -13,7 +13,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"museum/config"
-	"time"
 )
 
 func NewSpanExporter(config config.Config, log *zap.SugaredLogger) tracesdk.SpanExporter {
@@ -22,18 +21,14 @@ func NewSpanExporter(config config.Config, log *zap.SugaredLogger) tracesdk.Span
 		return &tracetest.NoopExporter{}
 	}
 
-	// try to set up a grpc connection to the collector
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	conn, err := grpc.DialContext(ctx, config.GetJaegerHost(),
+	client, err := grpc.NewClient(config.GetJaegerHost(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
 	)
 	if err != nil {
 		log.Panicw("failed to create gRPC connection to collector", "error", err)
 	}
 
-	exp, err := otlptracegrpc.New(context.Background(), otlptracegrpc.WithGRPCConn(conn))
+	exp, err := otlptracegrpc.New(context.Background(), otlptracegrpc.WithGRPCConn(client))
 	if err != nil {
 		log.Panicw("failed to create jaeger exporter", "error", err)
 	}
