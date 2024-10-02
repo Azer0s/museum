@@ -20,12 +20,14 @@ type ExhibitStartingStep struct {
 	//index of the object in the exhibit
 	Object int
 	Step   ObjectStartingStep
+	Error  error
 }
 
 type ExhibitStartingStepEvent struct {
 	ExhibitId        string `json:"exhibitId"`
 	Object           string `json:"object"`
 	Step             string `json:"step"`
+	Error            string `json:"error"`
 	CurrentStepCount int    `json:"currentStepCount"`
 	TotalStepCount   int    `json:"totalStepCount"`
 }

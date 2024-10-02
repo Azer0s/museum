@@ -77,12 +77,19 @@ func (n NatsEventing) DispatchExhibitStartingEvent(ctx context.Context, exhibit 
 	event.SetID(uuid.New().String())
 	event.SetSource("museum")
 	event.SetType("exhibit.starting")
+
+	errStr := ""
+	if step.Error != nil {
+		errStr = step.Error.Error()
+	}
+
 	err := event.SetData(cloudevents.ApplicationJSON, domain.ExhibitStartingStepEvent{
 		ExhibitId:        exhibit.Id,
 		Object:           exhibit.Objects[step.Object].Name,
 		Step:             step.Step.String(),
 		CurrentStepCount: *currentStepCount,
 		TotalStepCount:   exhibit.GetTotalSteps(),
+		Error:            errStr,
 	})
 
 	*currentStepCount++

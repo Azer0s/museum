@@ -92,6 +92,11 @@
             document.getElementById("percentage").innerHTML = percentage + "%";
         });
 
+        eventSource.addEventListener("status.error", (e) => {
+            console.log(e);
+            alert("An error occurred while loading the exhibit. Please try again.");
+        });
+
         eventSource.addEventListener("status.finished", async (e) => {
             await timeout(1000);
 

@@ -233,6 +233,16 @@ func handleExhibitStatus(exhibitService service.ExhibitService, eventing persist
 				return
 
 			case event := <-events:
+				if event.Error != "" {
+					err := res.SendMessage("status.error", map[string]string{"error": event.Error})
+					if err != nil {
+						log.Warnw("error sending message", "error", err, "requestId", req.RequestID)
+						return
+					}
+
+					return
+				}
+
 				err := res.SendMessage("status.update", event.ToMap())
 				if err != nil {
 					log.Warnw("error sending message", "error", err, "requestId", req.RequestID)

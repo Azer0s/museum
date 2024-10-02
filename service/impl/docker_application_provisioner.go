@@ -132,6 +132,11 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 		err = d.doCleanup(inspect, exhibit, ctx)
 		if err != nil {
 			d.Log.Errorw("error cleaning up container", "container", name, "exhibitId", exhibit.Id, "error", err)
+			d.Eventing.DispatchExhibitStartingEvent(ctx, *exhibit, stepCount, domain.ExhibitStartingStep{
+				Object: idx,
+				Step:   domain.ObjectStartingStepClean,
+				Error:  err,
+			})
 			return err
 		}
 	}
@@ -163,6 +168,11 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 
 			provisioner, err := d.VolumeProvisionerFactory.GetForDriverType(volume.Driver.Type)
 			if err != nil {
+				d.Eventing.DispatchExhibitStartingEvent(ctx, *exhibit, stepCount, domain.ExhibitStartingStep{
+					Object: idx,
+					Step:   domain.ObjectStartingStepCreate,
+					Error:  err,
+				})
 				return err
 			}
 
@@ -179,12 +189,22 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 	create, err := d.Client.ContainerCreate(ctx, containerConfig, nil, nil, nil, name)
 	if err != nil {
 		d.Log.Errorw("error creating container", "container", name, "exhibitId", exhibit.Id, "error", err)
+		d.Eventing.DispatchExhibitStartingEvent(ctx, *exhibit, stepCount, domain.ExhibitStartingStep{
+			Object: idx,
+			Step:   domain.ObjectStartingStepCreate,
+			Error:  err,
+		})
 		return err
 	}
 
 	err = d.Client.NetworkConnect(ctx, network.ID, create.ID, nil)
 	if err != nil {
 		d.Log.Errorw("error connecting container to network", "container", name, "exhibitId", exhibit.Id, "error", err)
+		d.Eventing.DispatchExhibitStartingEvent(ctx, *exhibit, stepCount, domain.ExhibitStartingStep{
+			Object: idx,
+			Step:   domain.ObjectStartingStepCreate,
+			Error:  err,
+		})
 		return err
 	}
 
@@ -198,6 +218,11 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 	err = d.Client.ContainerStart(ctx, create.ID, container.StartOptions{})
 	if err != nil {
 		d.Log.Errorw("error starting container", "container", name, "exhibitId", exhibit.Id, "error", err)
+		d.Eventing.DispatchExhibitStartingEvent(ctx, *exhibit, stepCount, domain.ExhibitStartingStep{
+			Object: idx,
+			Step:   domain.ObjectStartingStepStart,
+			Error:  err,
+		})
 		return err
 	}
 
@@ -215,6 +240,11 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 		err := d.doLivecheck(ctx, *exhibit, object)
 		if err != nil {
 			d.Log.Errorw("error doing livecheck", "exhibitId", exhibit.Id, "error", err)
+			d.Eventing.DispatchExhibitStartingEvent(ctx, *exhibit, stepCount, domain.ExhibitStartingStep{
+				Object: idx,
+				Step:   domain.ObjectStartingStepLivecheck,
+				Error:  err,
+			})
 			return err
 		}
 	}
@@ -225,6 +255,11 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 	inspect, err = d.Client.ContainerInspect(ctx, create.ID)
 	if err != nil {
 		d.Log.Errorw("error inspecting container", "container", name, "exhibitId", exhibit.Id, "error", err)
+		d.Eventing.DispatchExhibitStartingEvent(ctx, *exhibit, stepCount, domain.ExhibitStartingStep{
+			Object: idx,
+			Step:   domain.ObjectStartingStepReady,
+			Error:  err,
+		})
 		return err
 	}
 	(*templateContainer)[object.Name] = inspect.NetworkSettings.Networks["bridge"].IPAddress
