@@ -18,12 +18,16 @@ func (n NoopEventing) DispatchExhibitStartingEvent(_ context.Context, exhibit do
 	n.Log.Debugw("noop eventing dispatching exhibit starting event", "exhibitId", exhibit.Id, "step", step)
 }
 
-func (n NoopEventing) GetExhibitMetadataChannel() <-chan domain.ExhibitMetadata {
-	return make(chan domain.ExhibitMetadata)
+func (n NoopEventing) DispatchExhibitStoppingEvent(ctx context.Context, exhibit domain.Exhibit) {
+	n.Log.Debugw("noop eventing dispatching exhibit stopping event", "exhibitId", exhibit.Id)
 }
 
 func (n NoopEventing) GetExhibitStartingChannel(string, context.Context) (<-chan domain.ExhibitStartingStepEvent, context.CancelFunc, error) {
 	return make(chan domain.ExhibitStartingStepEvent), func() {}, nil
+}
+
+func (n NoopEventing) GetExhibitStoppingChannel(exhibitId string, parentCtx context.Context) (<-chan domain.ExhibitStoppingEvent, context.CancelFunc, error) {
+	return make(chan domain.ExhibitStoppingEvent), func() {}, nil
 }
 
 func (n NoopEventing) CanReceive() bool {

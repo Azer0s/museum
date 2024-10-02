@@ -504,6 +504,8 @@ func (d DockerApplicationProvisionerService) applicationStoppingStep(ctx context
 		return err
 	}
 
+	d.Eventing.DispatchExhibitStoppingEvent(subCtx, exhibit)
+
 	span.AddEvent("acquiring runtime_info lock")
 
 	lock := d.LockService.GetRwLock(subCtx, exhibitId, "runtime_info")

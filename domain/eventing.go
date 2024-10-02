@@ -32,6 +32,10 @@ type ExhibitStartingStepEvent struct {
 	TotalStepCount   int    `json:"totalStepCount"`
 }
 
+type ExhibitStoppingEvent struct {
+	ExhibitId string `json:"exhibitId"`
+}
+
 func (e ExhibitStartingStepEvent) ToMap() map[string]string {
 	return map[string]string{
 		"exhibitId":        e.ExhibitId,

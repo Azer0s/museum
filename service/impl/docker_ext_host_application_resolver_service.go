@@ -5,6 +5,7 @@ import (
 	"errors"
 	docker "github.com/docker/docker/client"
 	"museum/domain"
+	"museum/persistence"
 	service "museum/service/interface"
 	"museum/util/cache"
 )
@@ -13,6 +14,7 @@ type DockerExtHostApplicationResolverService struct {
 	ExhibitService service.ExhibitService
 	IpCache        *cache.LRU[string, string]
 	Client         *docker.Client
+	Eventing       persistence.Eventing
 }
 
 func (d DockerExtHostApplicationResolverService) ResolveApplication(ctx context.Context, exhibitId string) (string, error) {
@@ -25,7 +27,7 @@ func (d DockerExtHostApplicationResolverService) ResolveApplication(ctx context.
 		return "", errors.New("exhibit is not running")
 	}
 
-	if ip, ok := d.IpCache.Get(exhibit.RuntimeInfo.Hostname); ok {
+	if ip, ok := d.IpCache.Get(exhibit.RuntimeInfo.Hostname); ok && ip != "" {
 		return ip, nil
 	}
 
@@ -50,6 +52,18 @@ func (d DockerExtHostApplicationResolverService) ResolveApplication(ctx context.
 	}
 
 	d.IpCache.Put(exhibit.RuntimeInfo.Hostname, ipStr)
+
+	go func() {
+		channel, c, err := d.Eventing.GetExhibitStoppingChannel(exhibitId, context.Background())
+		if err != nil {
+			return
+		}
+		defer c()
+
+		<-channel
+		d.IpCache.Put(exhibit.RuntimeInfo.Hostname, "")
+	}()
+
 	return ipStr, nil
 }
 
