@@ -179,6 +179,7 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 			//TODO
 
 			util.Nop(provisioner)
+			containerConfig.Volumes = nil
 
 			//containerConfig.Volumes
 
@@ -302,13 +303,13 @@ func (d DockerApplicationProvisionerService) doCleanup(inspect types.ContainerJS
 	}
 
 	for _, volume := range exhibit.Volumes {
-		provisioner, err := d.VolumeProvisionerFactory.GetForDriverType(volume.Driver.Type)
-		if err != nil {
+		provisioner, e := d.VolumeProvisionerFactory.GetForDriverType(volume.Driver.Type)
+		if e != nil {
 			return err
 		}
 
-		err = provisioner.DeprovisionStorage(subCtx, volume.Driver.Config)
-		if err != nil {
+		e = provisioner.DeprovisionStorage(subCtx, volume.Driver.Config)
+		if e != nil {
 			return err
 		}
 	}
