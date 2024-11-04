@@ -151,8 +151,12 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 	containerConfig.Hostname = name
 	containerConfig.Domainname = object.Name + "." + exhibit.Name
 
+	var hostConfig *container.HostConfig = nil
+
 	// setup container mounts
 	if len(object.Mounts) != 0 {
+		hostConfig = &container.HostConfig{}
+
 		for containerVolume, containerMount := range object.Mounts {
 			// find corresponding volume
 			volume := domain.Volume{}
@@ -162,9 +166,6 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 					break
 				}
 			}
-
-			util.Nop(volume)
-			util.Nop(containerMount)
 
 			provisioner, err := d.VolumeProvisionerFactory.GetForDriverType(volume.Driver.Type)
 			if err != nil {
@@ -176,18 +177,21 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 				return err
 			}
 
-			//TODO
+			hostPath, err := provisioner.ProvisionStorage(ctx, volume.Driver.Config)
+			if err != nil {
+				d.Eventing.DispatchExhibitStartingEvent(ctx, *exhibit, stepCount, domain.ExhibitStartingStep{
+					Object: idx,
+					Step:   domain.ObjectStartingStepCreate,
+					Error:  err,
+				})
+				return err
+			}
 
-			util.Nop(provisioner)
-			containerConfig.Volumes = nil
-
-			//containerConfig.Volumes
-
-			//containerConfig.Volumes[containerMount], _ = provisioner.ProvisionStorage(ctx, volume.Driver.Config)
+			hostConfig.Binds = append(hostConfig.Binds, hostPath+":"+containerMount)
 		}
 	}
 
-	create, err := d.Client.ContainerCreate(ctx, containerConfig, nil, nil, nil, name)
+	create, err := d.Client.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, name)
 	if err != nil {
 		d.Log.Errorw("error creating container", "container", name, "exhibitId", exhibit.Id, "error", err)
 		d.Eventing.DispatchExhibitStartingEvent(ctx, *exhibit, stepCount, domain.ExhibitStartingStep{
