@@ -136,8 +136,16 @@ func startExhibitCleanup(log *zap.SugaredLogger, cleanupService service.ExhibitC
 
 func startProxyServer(router *http.Mux, config config.Config, log *zap.SugaredLogger) {
 	log.Infof("starting server on port %s", config.GetPort())
+
+	if config.GetCertFile() != "" && config.GetKeyFile() != "" {
+		err := http.ConfigureTls(config.GetCertFile(), config.GetKeyFile())
+		if err != nil {
+
+		}
+	}
+
 	err := http.ListenAndServe(fmt.Sprintf(":%s", config.GetPort()), router)
 	if err != nil {
-		panic(err)
+
 	}
 }

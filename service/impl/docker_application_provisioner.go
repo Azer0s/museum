@@ -256,6 +256,7 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 
 	exhibit.RuntimeInfo.RelatedContainers = append(exhibit.RuntimeInfo.RelatedContainers, create.ID)
 
+	// TODO: expose a random port and cache that instead of the container IP
 	// get container ip
 	inspect, err = d.Client.ContainerInspect(ctx, create.ID)
 	if err != nil {
