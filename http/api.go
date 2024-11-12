@@ -8,6 +8,10 @@ import (
 var certFile, keyFile string
 
 func ListenAndServe(addr string, handler http.Handler) error {
+	if certFile != "" && keyFile != "" {
+		return http.ListenAndServeTLS(addr, certFile, keyFile, handler)
+	}
+
 	return http.ListenAndServe(addr, handler)
 }
 

@@ -138,14 +138,15 @@ func startProxyServer(router *http.Mux, config config.Config, log *zap.SugaredLo
 	log.Infof("starting server on port %s", config.GetPort())
 
 	if config.GetCertFile() != "" && config.GetKeyFile() != "" {
+		log.Infof("using tls with cert %s and key %s", config.GetCertFile(), config.GetKeyFile())
 		err := http.ConfigureTls(config.GetCertFile(), config.GetKeyFile())
 		if err != nil {
-
+			log.Panicw("failed to configure tls", "error", err)
 		}
 	}
 
 	err := http.ListenAndServe(fmt.Sprintf(":%s", config.GetPort()), router)
 	if err != nil {
-
+		log.Panicw("failed to start server", "error", err)
 	}
 }
