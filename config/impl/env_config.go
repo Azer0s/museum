@@ -16,6 +16,8 @@ type EnvConfig struct {
 	Environment string `env:"ENVIRONMENT" envDefault:"development"`
 	ProxyMode   string `env:"PROXY_MODE" envDefault:"swarm-ext"`
 	DevProxyUrl string `env:"DEV_PROXY_URL" envDefault:"http://localhost:3000"`
+	CertFile    string `env:CERT_FILE`
+	KeyFile     string `env:KEY_FILE`
 }
 
 func (e EnvConfig) GetEtcdHost() string {
@@ -67,4 +69,12 @@ func (e EnvConfig) GetProxyMode() proxymode.Mode {
 
 func (e EnvConfig) GetDevProxyUrl() string {
 	return e.DevProxyUrl
+}
+
+func (e EnvConfig) GetCertFile() string {
+	return e.CertFile
+}
+
+func (e EnvConfig) GetKeyFile() string {
+	return e.KeyFile
 }

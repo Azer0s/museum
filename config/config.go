@@ -14,4 +14,6 @@ type Config interface {
 	GetEnvironment() string
 	GetProxyMode() proxymode.Mode
 	GetDevProxyUrl() string
+	GetCertFile() string
+	GetKeyFile() string
 }
