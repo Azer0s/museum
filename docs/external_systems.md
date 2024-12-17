@@ -1,0 +1,3 @@
+# External systems
+
+## Event driven
