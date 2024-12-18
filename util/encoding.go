@@ -30,7 +30,10 @@ func decodeGzip(body []byte) (b []byte, err error) {
 		return nil, err
 	}
 	defer func(gzipReader *gzip.Reader) {
-		err = gzipReader.Close()
+		e := gzipReader.Close()
+		if e != nil {
+			err = e
+		}
 	}(gzipReader)
 
 	return io.ReadAll(gzipReader)

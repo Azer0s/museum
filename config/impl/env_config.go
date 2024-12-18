@@ -5,19 +5,19 @@ import (
 )
 
 type EnvConfig struct {
-	EtcdHost    string `env:"ETCD_HOST,required"`
-	EtcdBaseKey string `env:"ETCD_BASE_KEY" envDefault:"museum"`
-	NatsHost    string `env:"NATS_HOST"`
-	NatsBaseKey string `env:"NATS_BASE_KEY" envDefault:"museum"`
-	DockerHost  string `env:"DOCKER_HOST" envDefault:"unix:///var/run/docker.sock"`
-	Hostname    string `env:"HOSTNAME" envDefault:"localhost"`
-	Port        string `env:"PORT" envDefault:"8080"`
-	JaegerHost  string `env:"JAEGER_HOST"`
-	Environment string `env:"ENVIRONMENT" envDefault:"development"`
-	ProxyMode   string `env:"PROXY_MODE" envDefault:"swarm-ext"`
-	DevProxyUrl string `env:"DEV_PROXY_URL" envDefault:"http://localhost:3000"`
-	CertFile    string `env:CERT_FILE`
-	KeyFile     string `env:KEY_FILE`
+	EtcdHost        string `env:"ETCD_HOST,required"`
+	EtcdBaseKey     string `env:"ETCD_BASE_KEY" envDefault:"museum"`
+	NatsHost        string `env:"NATS_HOST"`
+	NatsBaseKey     string `env:"NATS_BASE_KEY" envDefault:"museum"`
+	DockerHost      string `env:"DOCKER_HOST" envDefault:"unix:///var/run/docker.sock"`
+	Hostname        string `env:"HOSTNAME" envDefault:"localhost"`
+	Port            string `env:"PORT" envDefault:"8080"`
+	JaegerHost      string `env:"JAEGER_HOST"`
+	Environment     string `env:"ENVIRONMENT" envDefault:"development"`
+	ProxyMode       string `env:"PROXY_MODE" envDefault:"swarm-ext"`
+	CertFile        string `env:"CERT_FILE"`
+	KeyFile         string `env:"KEY_FILE"`
+	StartingTimeout int    `env:"STARTING_TIMEOUT" envDefault:"280"`
 }
 
 func (e EnvConfig) GetEtcdHost() string {
@@ -67,14 +67,14 @@ func (e EnvConfig) GetProxyMode() proxymode.Mode {
 	}
 }
 
-func (e EnvConfig) GetDevProxyUrl() string {
-	return e.DevProxyUrl
-}
-
 func (e EnvConfig) GetCertFile() string {
 	return e.CertFile
 }
 
 func (e EnvConfig) GetKeyFile() string {
 	return e.KeyFile
+}
+
+func (e EnvConfig) GetStartingTimeout() int {
+	return e.StartingTimeout
 }

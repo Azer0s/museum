@@ -5,6 +5,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
+	"museum/config"
 	"museum/domain"
 	service "museum/service/interface"
 	"time"
@@ -16,6 +17,7 @@ type ExhibitCleanupServiceImpl struct {
 	ApplicationProvisionerService service.ApplicationProvisionerService
 	Provider                      trace.TracerProvider
 	Log                           *zap.SugaredLogger
+	Config                        config.Config
 }
 
 func (e ExhibitCleanupServiceImpl) cleanupExhibit(exhibit domain.Exhibit, idx int, ctx context.Context) {
@@ -33,11 +35,21 @@ func (e ExhibitCleanupServiceImpl) cleanupExhibit(exhibit domain.Exhibit, idx in
 		return
 	}
 
-	if time.Now().After(time.Unix(exhibit.RuntimeInfo.LastAccessed, 0).Add(duration)) && exhibit.RuntimeInfo.Status == domain.Running {
+	startingTooLong := exhibit.RuntimeInfo.Status == domain.Starting && time.Now().After(time.Unix(exhibit.RuntimeInfo.LastAccessed, 0).Add(time.Duration(e.Config.GetStartingTimeout())*time.Second))
+	if startingTooLong {
+		startingSince := time.Now().Sub(time.Unix(exhibit.RuntimeInfo.LastAccessed, 0)).String()
+		e.Log.Infow("exhibit starting for too long", "exhibitId", exhibit.Id, "startingSince", startingSince)
+		span.AddEvent("exhibit starting since " + startingSince + ", cleaning up")
+	}
+
+	leaseExpired := time.Now().After(time.Unix(exhibit.RuntimeInfo.LastAccessed, 0).Add(duration)) && exhibit.RuntimeInfo.Status == domain.Running
+	if leaseExpired {
 		expiredBy := time.Now().Sub(time.Unix(exhibit.RuntimeInfo.LastAccessed, 0).Add(duration)).String()
 		e.Log.Infow("exhibit lease expired", "exhibitId", exhibit.Id, "expiredBy", expiredBy)
 		span.AddEvent("exhibit lease expired by " + expiredBy + ", cleaning up")
+	}
 
+	if leaseExpired || startingTooLong {
 		err = e.ApplicationProvisionerService.StopApplication(subCtx, exhibit.Id)
 		if err != nil {
 			e.Log.Warnw("error stopping application", "error", err, "exhibitId", exhibit.Id)
@@ -67,8 +79,6 @@ func (e ExhibitCleanupServiceImpl) Cleanup() error {
 		span.AddEvent("checking exhibit " + exhibit.Id)
 		e.cleanupExhibit(exhibit, i, ctx)
 	}
-
-	//TODO: cleanup starting exhibits that have been starting for too long
 
 	e.Log.Debug("finished cleaning up exhibits")
 

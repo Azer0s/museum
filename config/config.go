@@ -13,7 +13,7 @@ type Config interface {
 	GetJaegerHost() string
 	GetEnvironment() string
 	GetProxyMode() proxymode.Mode
-	GetDevProxyUrl() string
 	GetCertFile() string
 	GetKeyFile() string
+	GetStartingTimeout() int
 }

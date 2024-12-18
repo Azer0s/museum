@@ -17,6 +17,8 @@ mūsēum was developed at the University of Vienna to address specific challenge
 
 ## Architecture
 
+The architecture is relatively straightforward. For tracing mūsēum uses [Jaeger](https://www.jaegertracing.io) with [opentelemetry/otel](https://opentelemetry.io) internally. Persistent data is stored in [etcd](https://etcd.io) as it is a battle proven solution (used in K8s) with excellent pessimistic locking capabilities. [NATS](https://nats.io) is used for eventing (e.g. for EDD for external systems like Phaidra or for loading screens internally). As a container backend, mūsēum uses [docker](https://www.docker.com) (or rather [moby](https://mobyproject.org)), although this could be switched out for [containerd](https://containerd.io) or any other container runtime.
+
 ![architecture](./resources/architecture.svg)
 
 ## Current status
@@ -69,4 +71,4 @@ mūsēum relies on 4 main subsystems that were all writtin from scratch for mūs
 - **Dotted lines** indicate implementations
 - **Full lines** indicate dependencies
 
-![](resources/dependency_graph.png)
+![](resources/dependency_graph.svg)

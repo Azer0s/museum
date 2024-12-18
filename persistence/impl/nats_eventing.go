@@ -67,11 +67,17 @@ func (n NatsEventing) DispatchExhibitStartingEvent(ctx context.Context, exhibit 
 		))
 	defer span.End()
 
-	stepStr := strconv.Itoa(*currentStepCount)
-	totalStepStr := strconv.Itoa(exhibit.GetTotalSteps())
-	n.Log.Debugw("nats eventing dispatching exhibit starting event "+stepStr+"/"+totalStepStr,
-		"exhibitId", exhibit.Id, "object", exhibit.Objects[step.Object].Name, "step", step.Step.String())
-	span.AddEvent("dispatching exhibit starting event")
+	if step.Error == nil {
+		stepStr := strconv.Itoa(*currentStepCount)
+		totalStepStr := strconv.Itoa(exhibit.GetTotalSteps())
+		n.Log.Debugw("nats eventing dispatching exhibit starting event "+stepStr+"/"+totalStepStr,
+			"exhibitId", exhibit.Id, "object", exhibit.Objects[step.Object].Name, "step", step.Step.String())
+		span.AddEvent("dispatching exhibit starting event")
+	} else {
+		n.Log.Debugw("nats eventing dispatching exhibit starting event with error",
+			"exhibitId", exhibit.Id, "object", exhibit.Objects[step.Object].Name, "step", step.Step.String(), "error", step.Error)
+		span.AddEvent("dispatching exhibit starting event with error")
+	}
 
 	event := cloudevents.NewEvent()
 	event.SetID(uuid.New().String())

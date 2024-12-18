@@ -27,7 +27,10 @@ func (r RuntimeInfoServiceImpl) GetRuntimeInfo(ctx context.Context, id string) (
 	//TODO: span
 
 	defer func(lock util.RwErrMutex) {
-		err = lock.RUnlock()
+		e := lock.RUnlock()
+		if e != nil {
+			err = e
+		}
 	}(lock)
 
 	return r.State.GetRuntimeInfo(ctx, id)

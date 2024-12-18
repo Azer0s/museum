@@ -84,7 +84,7 @@ func (e *EtcdState) GetRwLock(ctx context.Context, id string, lockName string) u
 	// create new trace span for event service
 	_, span := e.Provider.
 		Tracer("etcd persistence").
-		Start(ctx, "WithRwLock", trace.WithAttributes(attribute.String("key", key), attribute.String("id", id), attribute.String("lockName", lockName)))
+		Start(ctx, "GetRwLock", trace.WithAttributes(attribute.String("key", key), attribute.String("id", id), attribute.String("lockName", lockName)))
 	defer span.End()
 
 	span.AddEvent("retrieving lock")

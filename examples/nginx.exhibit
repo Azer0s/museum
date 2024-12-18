@@ -29,12 +29,3 @@ objects:
         path: /
         port: 80
         status: 200
-    mounts:
-      nginx_data: /usr/share/nginx/html
-
-volumes:
-    - name: nginx_data
-      driver:
-        type: local
-        config:
-          path: /data/nginx-data

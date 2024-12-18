@@ -81,8 +81,17 @@ func (d DockerApplicationProvisionerService) startApplicationInsideLock(ctx cont
 	for _, o := range sortedObjects {
 		err := d.startExhibitObject(ctx, exhibit, o, networkInspect, idx, &stepCount, &containerNameMapping)
 		if err != nil {
-			//TODO: rollback
-			d.Log.Errorw("error starting exhibit object", "exhibit", exhibit.Name, "object", o.Name, "error", err)
+			d.Log.Warnw("error starting exhibit object", "exhibit", exhibit.Name, "object", o.Name, "error", err)
+
+			// set the status to stopped
+			exhibit.RuntimeInfo.Status = domain.Stopped
+			e := d.RuntimeInfoService.SetRuntimeInfo(ctx, exhibit.Id, *exhibit.RuntimeInfo)
+			if e != nil {
+				d.Log.Errorw("error setting runtime info", "exhibit", exhibit.Name, "error", e)
+				return e
+			}
+
+			d.Eventing.DispatchExhibitStoppingEvent(ctx, *exhibit)
 			return err
 		}
 		idx++
@@ -244,12 +253,19 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 
 		err := d.doLivecheck(ctx, *exhibit, object)
 		if err != nil {
-			d.Log.Errorw("error doing livecheck", "exhibitId", exhibit.Id, "error", err)
+			d.Log.Warnw("error doing livecheck", "exhibitId", exhibit.Id, "error", err)
 			d.Eventing.DispatchExhibitStartingEvent(ctx, *exhibit, stepCount, domain.ExhibitStartingStep{
 				Object: idx,
 				Step:   domain.ObjectStartingStepLivecheck,
 				Error:  err,
 			})
+
+			d.Log.Debugw("livecheck failed, cleaning up container", "container", name, "exhibitId", exhibit.Id)
+			e := d.cleanupContainer(ctx, exhibit, create, name, object)
+			if e != nil {
+				return e
+			}
+
 			return err
 		}
 	}
@@ -266,6 +282,12 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 			Step:   domain.ObjectStartingStepReady,
 			Error:  err,
 		})
+
+		e := d.cleanupContainer(ctx, exhibit, create, name, object)
+		if e != nil {
+			return e
+		}
+
 		return err
 	}
 	(*templateContainer)[object.Name] = inspect.NetworkSettings.Networks["bridge"].IPAddress
@@ -274,6 +296,47 @@ func (d DockerApplicationProvisionerService) startExhibitObject(ctx context.Cont
 		Object: idx,
 		Step:   domain.ObjectStartingStepReady,
 	})
+
+	return nil
+}
+
+func (d DockerApplicationProvisionerService) cleanupContainer(ctx context.Context, exhibit *domain.Exhibit, create container.CreateResponse, name string, object domain.Object) error {
+	// stop the container
+	e := d.Client.ContainerStop(ctx, create.ID, container.StopOptions{})
+	if e != nil {
+		d.Log.Errorw("error stopping container", "container", name, "exhibitId", exhibit.Id, "error", e)
+		return e
+	}
+
+	// remove the container
+	e = d.Client.ContainerRemove(ctx, create.ID, container.RemoveOptions{})
+	if e != nil {
+		d.Log.Errorw("error removing container", "container", name, "exhibitId", exhibit.Id, "error", e)
+		return e
+	}
+
+	for containerVolume := range object.Mounts {
+		// find corresponding volume
+		volume := domain.Volume{}
+		for _, v := range exhibit.Volumes {
+			if v.Name == containerVolume {
+				volume = v
+				break
+			}
+		}
+
+		provisioner, err := d.VolumeProvisionerFactory.GetForDriverType(volume.Driver.Type)
+		if err != nil {
+			d.Log.Errorw("error getting volume provisioner", "error", err)
+			return err
+		}
+
+		err = provisioner.DeprovisionStorage(ctx, volume.Driver.Config)
+		if err != nil {
+			d.Log.Errorw("error deprovisioning storage", "error", err)
+			return err
+		}
+	}
 
 	return nil
 }
@@ -391,7 +454,11 @@ func (d DockerApplicationProvisionerService) applicationStartingStep(ctx context
 	span.AddEvent("runtime_info lock acquired")
 
 	defer func(lock util.RwErrMutex) {
-		err = lock.Unlock()
+		e := lock.Unlock()
+		if e != nil {
+			d.Log.Errorw("error unlocking runtime_info", "exhibitId", exhibitId, "error", e)
+			err = e
+		}
 	}(lock)
 
 	span.AddEvent("checking exhibit status")
@@ -443,7 +510,11 @@ func (d DockerApplicationProvisionerService) applicationRunningStep(ctx context.
 	span.AddEvent("exhibit lock acquired")
 
 	defer func(lock util.RwErrMutex) {
-		err = lock.RUnlock()
+		e := lock.RUnlock()
+		if e != nil {
+			d.Log.Errorw("error unlocking exhibit", "exhibitId", exhibitId, "error", e)
+			err = e
+		}
 	}(exhibitRlock)
 
 	exhibit, err := d.ExhibitService.GetExhibitById(subCtx, exhibitId)
@@ -462,11 +533,16 @@ func (d DockerApplicationProvisionerService) applicationRunningStep(ctx context.
 	span.AddEvent("runtime_info lock acquired")
 
 	defer func(lock util.RwErrMutex) {
-		err = lock.Unlock()
+		e := lock.Unlock()
+		if e != nil {
+			d.Log.Errorw("error unlocking runtime_info", "exhibitId", exhibitId, "error", e)
+			err = e
+		}
 	}(lock)
 
 	err = d.startApplicationInsideLock(subCtx, &exhibit)
 	if err != nil {
+		d.Log.Debugw("error starting application, reverting status to stopped", "exhibitId", exhibitId, "error", err)
 		span.AddEvent("error starting application, reverting status to stopped")
 
 		exhibit.RuntimeInfo.Status = domain.Stopped
@@ -523,7 +599,11 @@ func (d DockerApplicationProvisionerService) applicationStoppingStep(ctx context
 	span.AddEvent("runtime_info lock acquired")
 
 	defer func(lock util.RwErrMutex) {
-		err = lock.Unlock()
+		e := lock.Unlock()
+		if e != nil {
+			d.Log.Errorw("error unlocking runtime_info", "exhibitId", exhibitId, "error", e)
+			err = e
+		}
 	}(lock)
 
 	span.AddEvent("checking exhibit status")
@@ -570,7 +650,11 @@ func (d DockerApplicationProvisionerService) applicationStoppedStep(ctx context.
 	span.AddEvent("runtime_info lock acquired")
 
 	defer func(lock util.RwErrMutex) {
-		err = lock.Unlock()
+		e := lock.Unlock()
+		if e != nil {
+			d.Log.Errorw("error unlocking runtime_info", "exhibitId", exhibitId, "error", e)
+			err = e
+		}
 	}(lock)
 
 	for _, c := range exhibit.RuntimeInfo.RelatedContainers {
@@ -641,7 +725,11 @@ func (d DockerApplicationProvisionerService) CleanupApplication(ctx context.Cont
 	span.AddEvent("runtime_info lock acquired")
 
 	defer func(lock util.RwErrMutex) {
-		err = lock.Unlock()
+		e := lock.Unlock()
+		if e != nil {
+			d.Log.Errorw("error unlocking runtime_info", "exhibitId", exhibitId, "error", e)
+			err = e
+		}
 	}(lock)
 
 	// check that exhibit is stopped+

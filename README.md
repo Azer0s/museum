@@ -66,6 +66,9 @@ mūsēum is available as a Docker image. You can find the image on Docker Hub. T
 * `PORT`: The port to listen on (optional, defaults to `8080`)
 * `JAEGER_HOST`: The address of the Jaeger instance (optional)
 * `ENVIRONMENT`: The environment mūsēum is running in (optional, defaults to `development`)
+* `CERT_FILE`: The path to the certificate file (optional)
+* `KEY_FILE`: The path to the key file (optional)
+* `STARTING_TIMEOUT`: The timeout for starting an application in seconds (optional, defaults to `280`)
 
 The proxy comes with a command line utility to manage applications. You can use it to start, stop and remove applications, etc.
 
