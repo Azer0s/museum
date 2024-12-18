@@ -1,1 +1,5 @@
 # Application provisioner service (museum/service)
+
+The `ApplicationProvisionerService` interface is responsible for managing the lifecycle of applications. It provides methods to start, stop, and clean up applications, ensuring that the necessary resources are allocated and released appropriately. This interface abstracts the underlying implementation details, allowing for different provisioning mechanisms to be used interchangeably.  
+
+The `StartApplication` method initiates the application, setting up the required environment and dependencies. The `StopApplication` method gracefully stops the application, ensuring that all resources are properly released. The `CleanupApplication` method performs any necessary cleanup tasks, such as removing temporary files or deallocating resources, to maintain a clean state.
