@@ -54,9 +54,9 @@ Every application has to take out a "lease" on the application name. This lease 
 ## How do I use it?
 mūsēum is available as a Docker image. You can find the image on Docker Hub. To run mūsēum, you need to provide the following environment variables:
 
-* `ETCD_HOST`: The address of the etcd instance
+* `ETCD_HOST`: The address of the etcd instance (usually `localhost:2379`)
 * `ETCD_BASE_KEY`: The base key to use for etcd (optional, defaults to `museum`)
-* `NATS_HOST`: The address of the NATS instance
+* `NATS_HOST`: The address of the NATS instance (usually `localhost:4222`)
 * `NATS_BASE_KEY`: The base key to use for NATS (optional, defaults to `museum`)
 * `DOCKER_HOST`: The address of the Docker Swarm (optional, defaults to `unix:///var/run/docker.sock`)
 * `PROXY_MODE`: The mode to use for the proxy (optional, defaults to `swarm-ext`)
